@@ -1,0 +1,15 @@
+{
+  "name": "دربك | Darbak",
+  "short_name": "دربك",
+  "description": "دليل داخلي للمستشفى بإرشاد صوتي — Accessible hospital wayfinding",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#F3F7FD",
+  "theme_color": "#1D5FD0",
+  "icons": [
+    { "src": "favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

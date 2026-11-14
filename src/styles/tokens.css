@@ -1,0 +1,209 @@
+/*
+ * Darbak design tokens.
+ * Layout concept: a calm hospital-signage system — white surfaces, one clinical
+ * blue, wayfinding signs as deep-blue panels with white pictograms, and orange
+ * reserved for Emergency and "your destination".
+ * Themes: light (default), dark, and high contrast (black / white / yellow).
+ */
+:root {
+  --font: 'Readex Pro', 'Noto Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+  --text-scale: 1;
+
+  --bg: #f2f6fc;
+  --surface: #ffffff;
+  --surface-2: #eaf1fb;
+  --ink: #0e2140;
+  --muted: #4a5d7e;
+  --line: #d8e2f0;
+  --primary: #1d5fd0;
+  --primary-strong: #1549a6;
+  --on-primary: #ffffff;
+  --primary-soft: #e3edfd;
+  --primary-soft-ink: #1549a6;
+  --sign: #123d8a;
+  --on-sign: #ffffff;
+  --sign-muted: #c9daf8;
+  --warn: #b4540c;
+  --warn-strong: #934308;
+  --on-warn: #ffffff;
+  --warn-soft: #fff0e1;
+  --ok: #11764a;
+  --on-ok: #ffffff;
+  --ok-soft: #e1f4ea;
+  --danger: #b42318;
+  --focus: #f2a93b;
+  --scrim: rgb(14 33 64 / 0.45);
+
+  --map-bg: #f7faff;
+  --map-building: #ffffff;
+  --map-wall: #c8d6ea;
+  --map-corridor: #edf2fa;
+  --map-room: #eef3fb;
+  --map-room-line: #d3deee;
+  --map-room-ink: #2a426a;
+  --map-facility: #e2ecfd;
+  --map-core: #dde4ef;
+  --map-emergency: #ffe8d4;
+  --map-emergency-ink: #8f4209;
+  --map-route: #1d5fd0;
+  --map-route-done: #a9bddc;
+  --map-casing: #ffffff;
+
+  --shadow-1: 0 1px 2px rgb(14 33 64 / 0.06), 0 2px 8px rgb(29 95 208 / 0.06);
+  --shadow-2: 0 2px 4px rgb(14 33 64 / 0.06), 0 14px 34px rgb(29 95 208 / 0.13);
+
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 26px;
+  --r-pill: 999px;
+
+  --fs-xs: 0.8125rem;
+  --fs-sm: 0.9375rem;
+  --fs-md: 1.0625rem;
+  --fs-lg: 1.25rem;
+  --fs-xl: 1.625rem;
+  --fs-xxl: 2.125rem;
+
+  --tap: 48px;
+  --nav-h: 72px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --bg: #0a1426;
+    --surface: #111e35;
+    --surface-2: #172846;
+    --ink: #eaf1ff;
+    --muted: #a9b9d6;
+    --line: #253a5f;
+    --primary: #6aa2ff;
+    --primary-strong: #8db8ff;
+    --on-primary: #061430;
+    --primary-soft: #1b3462;
+    --primary-soft-ink: #b9d2ff;
+    --sign: #1d4fa6;
+    --on-sign: #ffffff;
+    --sign-muted: #c7d9fb;
+    --warn: #ffab5e;
+    --warn-strong: #ffc690;
+    --on-warn: #2b1500;
+    --warn-soft: #3a240f;
+    --ok: #58d39a;
+    --on-ok: #04261a;
+    --ok-soft: #0f3326;
+    --danger: #ff8a80;
+    --scrim: rgb(0 0 0 / 0.6);
+    --map-bg: #0d192e;
+    --map-building: #12203a;
+    --map-wall: #2b4370;
+    --map-corridor: #182a4a;
+    --map-room: #1a2c4d;
+    --map-room-line: #2b4370;
+    --map-room-ink: #cddcf7;
+    --map-facility: #1d3561;
+    --map-core: #22324f;
+    --map-emergency: #4a2a10;
+    --map-emergency-ink: #ffc690;
+    --map-route: #6aa2ff;
+    --map-route-done: #3b5584;
+    --map-casing: #0d192e;
+    --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-2: 0 8px 28px rgb(0 0 0 / 0.45);
+    color-scheme: dark;
+  }
+}
+
+:root[data-theme='dark'] {
+  --bg: #0a1426;
+  --surface: #111e35;
+  --surface-2: #172846;
+  --ink: #eaf1ff;
+  --muted: #a9b9d6;
+  --line: #253a5f;
+  --primary: #6aa2ff;
+  --primary-strong: #8db8ff;
+  --on-primary: #061430;
+  --primary-soft: #1b3462;
+  --primary-soft-ink: #b9d2ff;
+  --sign: #1d4fa6;
+  --on-sign: #ffffff;
+  --sign-muted: #c7d9fb;
+  --warn: #ffab5e;
+  --warn-strong: #ffc690;
+  --on-warn: #2b1500;
+  --warn-soft: #3a240f;
+  --ok: #58d39a;
+  --on-ok: #04261a;
+  --ok-soft: #0f3326;
+  --danger: #ff8a80;
+  --scrim: rgb(0 0 0 / 0.6);
+  --map-bg: #0d192e;
+  --map-building: #12203a;
+  --map-wall: #2b4370;
+  --map-corridor: #182a4a;
+  --map-room: #1a2c4d;
+  --map-room-line: #2b4370;
+  --map-room-ink: #cddcf7;
+  --map-facility: #1d3561;
+  --map-core: #22324f;
+  --map-emergency: #4a2a10;
+  --map-emergency-ink: #ffc690;
+  --map-route: #6aa2ff;
+  --map-route-done: #3b5584;
+  --map-casing: #0d192e;
+  --shadow-1: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-2: 0 8px 28px rgb(0 0 0 / 0.45);
+  color-scheme: dark;
+}
+
+/* High contrast wins over both light and dark. */
+:root[data-contrast='high'] {
+  --bg: #000000;
+  --surface: #000000;
+  --surface-2: #000000;
+  --ink: #ffffff;
+  --muted: #ffffff;
+  --line: #ffffff;
+  --primary: #ffe14d;
+  --primary-strong: #ffe14d;
+  --on-primary: #000000;
+  --primary-soft: #000000;
+  --primary-soft-ink: #ffe14d;
+  --sign: #000000;
+  --on-sign: #ffe14d;
+  --sign-muted: #ffffff;
+  --warn: #ffe14d;
+  --warn-strong: #ffe14d;
+  --on-warn: #000000;
+  --warn-soft: #000000;
+  --ok: #ffe14d;
+  --on-ok: #000000;
+  --ok-soft: #000000;
+  --danger: #ffe14d;
+  --focus: #00e5ff;
+  --scrim: rgb(0 0 0 / 0.8);
+  --map-bg: #000000;
+  --map-building: #000000;
+  --map-wall: #ffffff;
+  --map-corridor: #000000;
+  --map-room: #000000;
+  --map-room-line: #ffffff;
+  --map-room-ink: #ffffff;
+  --map-facility: #000000;
+  --map-core: #000000;
+  --map-emergency: #000000;
+  --map-emergency-ink: #ffe14d;
+  --map-route: #ffe14d;
+  --map-route-done: #777777;
+  --map-casing: #000000;
+  --shadow-1: none;
+  --shadow-2: none;
+  color-scheme: dark;
+}
+
+:root[data-text='m'] {
+  --text-scale: 1.15;
+}
+:root[data-text='l'] {
+  --text-scale: 1.3;
+}
