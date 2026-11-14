@@ -148,7 +148,11 @@ The routing and wording layers are plain TypeScript with no browser or React dep
 
 ## الفريق · Team
 
-Built for MEDATHON 2026. Add your team members here.
+فريق دربك، MEDATHON 2026 · The Darbak team, MEDATHON 2026
+
+- **أثير** · Atheer
+- **فاطمة** · Fatima
+- **نجد** · Najd
 
 ## License
 
