@@ -6,7 +6,7 @@
 
 **An accessible, bilingual indoor-wayfinding web app for hospitals, with Saudi-Arabic voice guidance.**
 
-[![CI](https://github.com/OWNER/darbak/actions/workflows/ci.yml/badge.svg)](https://github.com/OWNER/darbak/actions/workflows/ci.yml)
+[![CI](https://github.com/najdhamed/darbak/actions/workflows/ci.yml/badge.svg)](https://github.com/najdhamed/darbak/actions/workflows/ci.yml)
 ![TypeScript](https://img.shields.io/badge/TypeScript-strict-1D5FD0)
 ![React](https://img.shields.io/badge/React-18-1D5FD0)
 ![License](https://img.shields.io/badge/license-MIT-1D5FD0)
@@ -81,7 +81,7 @@ Large hospitals are hard to navigate: many floors, identical corridors and small
 Requires **Node.js 20+**.
 
 ```bash
-git clone https://github.com/OWNER/darbak.git
+git clone https://github.com/najdhamed/darbak.git
 cd darbak
 npm install
 npm run dev          # http://localhost:5173
