@@ -47,11 +47,44 @@ function precache(): Plugin {
   };
 }
 
+/**
+ * A strict Content-Security-Policy for the built site: scripts, styles, fonts
+ * and data only from the site itself, nothing embeddable, no plug-ins. It is a
+ * <meta> tag because static hosts such as GitHub Pages cannot send headers.
+ * Not applied in development, where the dev server needs inline scripts.
+ */
+function contentSecurityPolicy(): Plugin {
+  const policy = [
+    "default-src 'self'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'", // React sets inline style attributes
+    "img-src 'self' data: blob:", // QR codes and the photo of a sign
+    "media-src 'self' blob:",
+    "font-src 'self'",
+    "connect-src 'self'",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+  return {
+    name: 'darbak-csp',
+    apply: 'build',
+    transformIndexHtml(html) {
+      return html.replace(
+        '<meta charset="UTF-8" />',
+        `<meta charset="UTF-8" />\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`,
+      );
+    },
+  };
+}
+
 // `base: './'` keeps every asset path relative, so the same build runs from a
 // domain root, a GitHub Pages sub-path or any static host without changes.
 export default defineConfig({
   base: './',
-  plugins: [react(), precache()],
+  plugins: [react(), contentSecurityPolicy(), precache()],
   build: {
     target: 'es2020',
     sourcemap: true,
@@ -59,7 +92,7 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
     coverage: {
       provider: 'v8',
       include: [

@@ -80,18 +80,27 @@ function reducer(state: JourneyState, action: Action): JourneyState {
   }
 }
 
-function restore(): JourneyState {
-  const saved = readJSON<Partial<JourneyState>>(STORAGE_KEY, {});
+/**
+ * Accepts whatever was stored (an older version, a hand-edited value, "null")
+ * and returns a state the app can always render.
+ */
+export function sanitizeJourney(raw: unknown): JourneyState {
+  const saved = (raw && typeof raw === 'object' && !Array.isArray(raw) ? raw : {}) as Partial<
+    Record<keyof JourneyState, unknown>
+  >;
   const known = (id: unknown): id is string => typeof id === 'string' && Boolean(findPlace(id));
+  const step = saved.stepIndex;
   return {
     ...INITIAL,
     startId: known(saved.startId) ? saved.startId : INITIAL.startId,
     destinationId: known(saved.destinationId) ? saved.destinationId : null,
-    stepIndex: typeof saved.stepIndex === 'number' ? saved.stepIndex : 0,
+    stepIndex: typeof step === 'number' && Number.isInteger(step) && step >= 0 ? step : 0,
     arrived: saved.arrived === true,
     recents: Array.isArray(saved.recents) ? saved.recents.filter(known).slice(0, MAX_RECENTS) : [],
   };
 }
+
+const restore = (): JourneyState => sanitizeJourney(readJSON<unknown>(STORAGE_KEY, {}));
 
 interface JourneyValue {
   readonly state: JourneyState;

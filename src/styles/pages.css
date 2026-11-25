@@ -1647,3 +1647,35 @@
   justify-content: space-between;
   gap: 8px;
 }
+
+/* ---------- Something went wrong ---------- */
+.crash {
+  min-block-size: 100dvh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  max-inline-size: 520px;
+  margin-inline: auto;
+  padding: 24px max(20px, env(safe-area-inset-left, 0px));
+  background: var(--bg);
+  color: var(--ink);
+}
+
+.crash__title {
+  margin: 0;
+  font-size: var(--fs-2xl, 1.75rem);
+}
+
+.crash__body {
+  margin: 0;
+  font-size: var(--fs-md);
+  line-height: 1.7;
+}
+
+.page-loading {
+  padding: 48px 16px;
+  text-align: center;
+  color: var(--ink-soft, var(--ink));
+  font-size: var(--fs-md);
+}

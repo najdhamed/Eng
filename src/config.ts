@@ -1,4 +1,4 @@
-export const APP_VERSION = '1.0.0';
+export const APP_VERSION = '1.1.0';
 
 /** Average indoor speeds in metres per second (conservative for patients). */
 export const SPEED_MPS = { walk: 1.1, wheelchair: 0.8, stroller: 0.95 } as const;

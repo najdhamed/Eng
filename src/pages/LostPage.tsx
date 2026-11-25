@@ -12,7 +12,12 @@ import { foundSpeech } from '../i18n/speech';
 import type { MessageKey } from '../i18n/translate';
 import type { RouteName } from '../router/useHashRoute';
 import { buzz } from '../services/device';
-import { decodeQrFromFile, decodeQrFromVideo, parsePlaceCode } from '../services/qr';
+import {
+  decodeQrFromFile,
+  decodeQrFromVideo,
+  parsePlaceCode,
+  preloadQrDecoder,
+} from '../services/qr';
 import { useJourney } from '../state/JourneyContext';
 import { useToast } from '../state/ToastContext';
 
@@ -37,6 +42,7 @@ export function LostPage({ navigate }: { navigate: (route: RouteName) => void })
 
   useEffect(() => {
     speak(tr.t('lost.prompt'));
+    void preloadQrDecoder(); // ready before the first sign is scanned
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopCamera = useCallback(() => {

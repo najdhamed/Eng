@@ -56,6 +56,25 @@ test.describe('the app shell', () => {
     }
   });
 
+  test('every page opens without a single error (which also proves the security policy allows all it needs)', async ({
+    page,
+    context,
+  }) => {
+    await seed(context, { locale: 'en', journey: GROUND_ROUTE });
+    const problems = watchErrors(page);
+    const policy = await page.goto('/').then((r) => r?.text());
+    expect(policy).toContain('Content-Security-Policy');
+    for (const name of ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs', 'studio']) {
+      await page.goto(`/#${name}`);
+      await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    }
+    await page.goto('/#route');
+    await page.getByRole('button', { name: /Follow my location/ }).click();
+    await page.getByRole('button', { name: 'Try a demo walk' }).click();
+    await expect(page.getByRole('region', { name: 'Following your walk' })).toBeVisible();
+    expect(problems).toEqual([]);
+  });
+
   test('settings opens from the header', async ({ page, context }) => {
     await seed(context, { locale: 'en' });
     await page.goto('/');

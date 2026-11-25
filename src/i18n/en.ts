@@ -5,6 +5,7 @@ export const en: Record<MessageKey, string> = {
   'app.tagline': 'Your way around the hospital',
   'app.demo': 'Demo · the hospital, maps and hours are fictional',
 
+  'app.loading': 'Loading…',
   'nav.main': 'Main navigation',
   'nav.home': 'Home',
   'nav.places': 'Places',

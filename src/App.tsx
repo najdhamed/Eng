@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { lazy, Suspense, useEffect, useRef } from 'react';
 import { BottomNav } from './components/BottomNav';
 import { Header } from './components/Header';
 import { Onboarding } from './components/Onboarding';
@@ -10,12 +10,16 @@ import { MapPage } from './pages/MapPage';
 import { PlacesPage } from './pages/PlacesPage';
 import { PrefsPage } from './pages/PrefsPage';
 import { RoutePage } from './pages/RoutePage';
-import { SignsPage } from './pages/SignsPage';
-import { StudioPage } from './pages/StudioPage';
 import { useHashRoute } from './router/useHashRoute';
 import { JourneyProvider, useJourney } from './state/JourneyContext';
 import { PrefsProvider, usePrefs } from './state/PrefsContext';
 import { ToastProvider, useToast } from './state/ToastContext';
+
+// Staff-only pages (and the QR generator they need) load when first opened.
+const SignsPage = lazy(() => import('./pages/SignsPage').then((m) => ({ default: m.SignsPage })));
+const StudioPage = lazy(() =>
+  import('./pages/StudioPage').then((m) => ({ default: m.StudioPage })),
+);
 
 function Shell() {
   const [{ route, herePlaceId }, navigate] = useHashRoute();
@@ -81,7 +85,15 @@ function Shell() {
       </a>
       {!focused && <Header route={route} />}
       <main ref={main} className="app__main" key={route}>
-        {page}
+        <Suspense
+          fallback={
+            <p className="page-loading" role="status">
+              {tr.t('app.loading')}
+            </p>
+          }
+        >
+          {page}
+        </Suspense>
       </main>
       {!focused && <BottomNav route={route} />}
       {!prefs.onboarded && <Onboarding />}

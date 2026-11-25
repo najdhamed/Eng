@@ -1,4 +1,3 @@
-import jsQR from 'jsqr';
 import { QR_PREFIX } from '../config';
 
 export const encodePlaceCode = (placeId: string): string => `${QR_PREFIX}${placeId}`;
@@ -13,6 +12,24 @@ export function parsePlaceCode(text: string | null | undefined): string | null {
 }
 
 const MAX_SIDE = 1400;
+
+// jsQR is only needed when someone scans a sign, so it is fetched on demand
+// (and kept offline by the service worker) instead of weighing down every visit.
+type JsQr = typeof import('jsqr').default;
+let jsQr: JsQr | null = null;
+let jsQrLoading: Promise<void> | null = null;
+
+/** Starts fetching the fallback decoder. Safe to call as often as you like. */
+export function preloadQrDecoder(): Promise<void> {
+  jsQrLoading ??= import('jsqr')
+    .then((module) => {
+      jsQr = module.default;
+    })
+    .catch(() => {
+      jsQrLoading = null; // try again next time
+    });
+  return jsQrLoading;
+}
 
 interface BarcodeDetectorLike {
   detect(source: CanvasImageSource): Promise<{ rawValue: string }[]>;
@@ -33,7 +50,8 @@ function decodeCanvas(canvas: HTMLCanvasElement): string | null {
   const context = canvas.getContext('2d', { willReadFrequently: true });
   if (!context) return null;
   const { data, width, height } = context.getImageData(0, 0, canvas.width, canvas.height);
-  return jsQR(data, width, height, { inversionAttempts: 'attemptBoth' })?.data ?? null;
+  // Until the decoder has arrived a live frame simply reads as "nothing yet".
+  return jsQr?.(data, width, height, { inversionAttempts: 'attemptBoth' })?.data ?? null;
 }
 
 async function loadImage(file: Blob): Promise<HTMLImageElement> {
@@ -56,6 +74,7 @@ async function loadImage(file: Blob): Promise<HTMLImageElement> {
  */
 export async function decodeQrFromFile(file: Blob): Promise<string | null> {
   const image = await loadImage(file);
+  await preloadQrDecoder();
   const native = nativeDetector();
   if (native) {
     try {

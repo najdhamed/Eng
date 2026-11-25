@@ -32,6 +32,12 @@ Darbak is built for people who find hospitals hardest to navigate: older patient
 - A skip link and a visible focus ring everywhere.
 - ESLint runs `eslint-plugin-jsx-a11y` in CI.
 
+**Automated checks (every push)**
+
+- axe-core scans every page in Arabic and English, plus the consent sheet, a live walk at the lift, dark mode and high contrast, against WCAG 2.0/2.1/2.2 A and AA and best practices, in a phone-sized browser. Zero violations is the bar.
+- Layout tests open every page at 320 px wide with the largest text size, in both languages, and fail on any sideways overflow or overlapping header buttons.
+- A test checks that the "I am on the new floor" button is never hidden behind the fixed Back / Next bar or the sticky map, on a normal phone and on a small one.
+
 **Motor**
 
 - Touch targets are at least 44 × 44 px; the main actions are 60 px tall and sit at the bottom of the screen.
@@ -46,4 +52,5 @@ Darbak is built for people who find hospitals hardest to navigate: older patient
 - [ ] High contrast
 - [ ] Keyboard only: every action reachable, focus always visible
 - [ ] Screen reader (VoiceOver or TalkBack): the current step is announced
-- [ ] 320 px wide screen: no horizontal scrolling
+- [ ] 320 px wide screen: no horizontal scrolling (also checked by `npm run test:e2e`)
+- [ ] `npm run test:e2e` passes: it includes the axe scans
