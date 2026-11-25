@@ -13,6 +13,7 @@ import { useSpeech } from '../hooks/useSpeech';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useI18n } from '../i18n/I18nContext';
 import { describeRoute, routeIntro } from '../i18n/directionsText';
+import { arrivedSpeech, firstStepSpeech, floorWaitSpeech } from '../i18n/speech';
 import type { MessageKey } from '../i18n/translate';
 import type { IconName } from '../icons/paths';
 import { routeOnFloor } from '../navigation/geometry';
@@ -88,18 +89,15 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
     const key = `${route.destination.id}:${route.start.id}:${index}:${arrived}:${tr.locale}`;
     if (spokenFor.current === key) return;
     spokenFor.current = key;
-    if (arrived)
-      speak(
-        `${tr.t('route.arrivedTitle', { place: tr.name(route.destination.name) })}. ${tr.t('route.arrivedSub')}`,
-      );
-    else speak(index === 0 ? `${routeIntro(route, tr)} ${text.speech}` : text.speech);
+    if (arrived) speak(arrivedSpeech(tr, route.destination));
+    else speak(index === 0 ? firstStepSpeech(routeIntro(route, tr), text.speech) : text.speech);
   }, [route, text, index, arrived, tr, speak]);
 
   const transfer = liveOn && live ? live.view.transfer : null;
   const transferFloor = transfer?.toFloor;
   useEffect(() => {
     if (transferFloor === undefined) return;
-    speak(tr.t('live.floorSpeech', { floor: tr.floorName(transferFloor) }));
+    speak(floorWaitSpeech(tr, transferFloor));
   }, [transferFloor, speak, tr]);
 
   useEffect(() => () => cancel(), [cancel]);

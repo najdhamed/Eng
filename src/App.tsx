@@ -11,6 +11,7 @@ import { PlacesPage } from './pages/PlacesPage';
 import { PrefsPage } from './pages/PrefsPage';
 import { RoutePage } from './pages/RoutePage';
 import { SignsPage } from './pages/SignsPage';
+import { StudioPage } from './pages/StudioPage';
 import { useHashRoute } from './router/useHashRoute';
 import { JourneyProvider, useJourney } from './state/JourneyContext';
 import { PrefsProvider, usePrefs } from './state/PrefsContext';
@@ -60,6 +61,8 @@ function Shell() {
         return <PrefsPage />;
       case 'signs':
         return <SignsPage />;
+      case 'studio':
+        return <StudioPage />;
     }
   })();
 

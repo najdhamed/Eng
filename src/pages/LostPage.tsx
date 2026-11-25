@@ -8,6 +8,7 @@ import { findPlace } from '../domain/hospital';
 import type { Place } from '../domain/types';
 import { useSpeech } from '../hooks/useSpeech';
 import { useI18n } from '../i18n/I18nContext';
+import { foundSpeech } from '../i18n/speech';
 import type { MessageKey } from '../i18n/translate';
 import type { RouteName } from '../router/useHashRoute';
 import { buzz } from '../services/device';
@@ -56,9 +57,7 @@ export function LostPage({ navigate }: { navigate: (route: RouteName) => void })
       stopCamera();
       buzz(60);
       setPhase({ kind: 'found', place });
-      speak(
-        tr.t('lost.foundSpeech', { place: tr.name(place.name), floor: tr.floorName(place.floor) }),
-      );
+      speak(foundSpeech(tr, place));
     },
     [speak, stopCamera, tr],
   );
