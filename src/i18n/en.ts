@@ -117,6 +117,46 @@ export const en: Record<MessageKey, string> = {
   'route.viewFloor': 'Viewing {floor}',
   'route.backToStep': 'Back to my step',
 
+  'live.start': 'Follow my location',
+  'live.startSub': 'I keep track of where you are and move to the next step by myself',
+  'live.stop': 'Stop following',
+  'live.consentTitle': 'Let Darbak follow your walk',
+  'live.consentIntro':
+    'To know where you are and move to the next step by itself, I need your permission for two things:',
+  'live.permLocation': 'Location',
+  'live.permLocationWhy':
+    'Measures how far you have walked. Works best at entrances and near windows.',
+  'live.permMotion': 'Motion sensor',
+  'live.permMotionWhy': 'Counts your steps inside the building, where GPS cannot reach.',
+  'live.privacy':
+    'Everything happens on your phone. Your location is never sent or stored anywhere.',
+  'live.honest':
+    'Indoors, GPS is not exact. If I fall behind or run ahead, tap Next or scan a QR sign and I will correct your position.',
+  'live.allow': 'Allow and start',
+  'live.demo': 'Try a demo walk',
+  'live.notNow': 'Not now',
+  'live.on': 'Following your walk',
+  'live.demoOn': 'Demo walk, not your real position',
+  'live.sourceSteps': 'from your steps',
+  'live.sourceGps': 'from location',
+  'live.sourceDemo': 'demo',
+  'live.waiting': 'Waiting for your first steps…',
+  'live.walking': 'Walking',
+  'live.stepsCount': '{n} steps',
+  'live.accuracy': 'Location ±{m} m',
+  'live.remaining': '{distance} to go',
+  'live.asking': 'Choose Allow when your phone asks, so I can follow you.',
+  'live.locationDenied':
+    'Location is blocked. Turn it on in the browser settings (lock icon next to the address, then Location, then Allow), then tap Follow my location again.',
+  'live.motionDenied': 'The motion sensor is unavailable or blocked, so I rely on location only.',
+  'live.blind':
+    'I cannot sense movement on this device. Tap Next each time you pass a turn, or try the demo walk.',
+  'live.floorLift': 'When the lift gets you to {floor}, tap the button.',
+  'live.floorStairs': 'When you reach {floor} by the stairs, tap the button.',
+  'live.floorDone': 'I am on {floor}',
+  'live.floorSpeech': 'When you reach {floor}, tap the button.',
+  'live.demoDone': 'Demo walk finished',
+
   'dir.startEntrance': 'Enter through the main entrance',
   'dir.startEntranceDetail': 'Keep to the corridor in front of you',
   'dir.startEntranceStepFree': 'The entrance is level, with no steps',

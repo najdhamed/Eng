@@ -13,6 +13,8 @@ interface FloorMapProps {
   /** Route node index the visitor has reached; earlier parts are drawn as done. */
   readonly progressIndex?: number;
   readonly you?: Point | null;
+  /** Draw the walked part of the route up to `you`, not just up to the last node. */
+  readonly followYou?: boolean;
   readonly destinationId?: string | null;
   readonly highlightId?: string | null;
   readonly onSelect?: (place: Place) => void;
@@ -33,8 +35,18 @@ function MapIcon({ name, x, y, size }: { name: IconName; x: number; y: number; s
 const toPath = (points: readonly RoutePoint[]) =>
   points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x} ${p.y}`).join(' ');
 
-function split(run: readonly RoutePoint[], index: number) {
+/**
+ * Splits a run into the part already walked and the part still to go. With
+ * `cut` (the live position between two nodes) the split falls exactly there.
+ */
+function split(run: readonly RoutePoint[], index: number, cut?: Point | null) {
   const done = run.filter((p) => p.index <= index);
+  const rest = run.slice(done.length);
+  const last = done[done.length - 1];
+  if (cut && last && rest.length > 0 && Math.hypot(cut.x - last.x, cut.y - last.y) > 0.5) {
+    const at = { x: cut.x, y: cut.y, index };
+    return { done: [...done, at], todo: [at, ...rest] };
+  }
   const todoStart = Math.max(0, done.length - 1);
   return { done, todo: run.slice(todoStart) };
 }
@@ -64,6 +76,7 @@ export const FloorMap = memo(function FloorMap({
   route,
   progressIndex = -1,
   you,
+  followYou = false,
   destinationId,
   highlightId,
   onSelect,
@@ -159,7 +172,7 @@ export const FloorMap = memo(function FloorMap({
       )}
 
       {route?.runs.map((run, i) => {
-        const { done, todo } = split(run, progressIndex);
+        const { done, todo } = split(run, progressIndex, followYou ? you : null);
         return (
           <g key={i} className="map-route" aria-hidden="true">
             <path className="map-route__casing" d={toPath(run)} />

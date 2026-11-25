@@ -23,7 +23,7 @@ export interface Translator {
   t(key: MessageKey, vars?: Vars): string;
   count(unit: CountUnit, n: number): string;
   name(text: Localized): string;
-  /** "to the pharmacy": لل/لـ in Arabic, "to" in English. */
+  /** "to the pharmacy": لل/ل in Arabic, "to" in English. */
   toPlace(name: string): string;
   floorName(floor: FloorId): string;
   floorTo(floor: FloorId): string;
@@ -44,7 +44,7 @@ export function createTranslator(locale: Locale): Translator {
     count,
     name: (text) => text[locale],
     toPlace: (name) =>
-      locale === 'ar' ? (name.startsWith('ال') ? `لل${name.slice(2)}` : `لـ${name}`) : `to ${name}`,
+      locale === 'ar' ? (name.startsWith('ال') ? `لل${name.slice(2)}` : `ل${name}`) : `to ${name}`,
     floorName: (floor) => t(`floor.${floor}`),
     floorTo: (floor) => t(`floorTo.${floor}`),
     floorShort: (floor) => t(`floorShort.${floor}`),

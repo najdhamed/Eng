@@ -22,6 +22,13 @@ interface MapViewportProps {
   readonly children: ReactNode;
   readonly className?: string;
   readonly onRecenter?: () => void;
+  /**
+   * While false, a moving `focus` point no longer pulls the map back (the
+   * person has panned away). A new `focus.key` still re-centres.
+   */
+  readonly follow?: boolean;
+  /** Called once when the person starts dragging the map. */
+  readonly onPan?: () => void;
 }
 
 const { width: W, height: H } = MAP_SIZE;
@@ -46,7 +53,15 @@ function centreOn(point: Point, s: number): View {
 }
 
 /** Pan with one finger or the mouse, pinch or scroll to zoom, plus buttons. */
-export function MapViewport({ label, focus, children, className, onRecenter }: MapViewportProps) {
+export function MapViewport({
+  label,
+  focus,
+  children,
+  className,
+  onRecenter,
+  follow = true,
+  onPan,
+}: MapViewportProps) {
   const { t } = useI18n();
   const svg = useRef<SVGSVGElement>(null);
   const [view, setView] = useState<View>(() => (focus ? centreOn(focus, focus.scale) : FIT));
@@ -57,8 +72,12 @@ export function MapViewport({ label, focus, children, className, onRecenter }: M
   );
   const moved = useRef(false);
 
+  const focusKey = useRef(focus?.key);
   useEffect(() => {
     if (!focus) return;
+    const keyChanged = focusKey.current !== focus.key;
+    focusKey.current = focus.key;
+    if (!keyChanged && !follow) return;
     setAnimate(true);
     setView(centreOn(focus, focus.scale));
   }, [focus?.key, focus?.x, focus?.y, focus?.scale]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -133,7 +152,10 @@ export function MapViewport({ label, focus, children, className, onRecenter }: M
     const dx = centre.x - g.start.x;
     const dy = centre.y - g.start.y;
     if (Math.hypot(dx, dy) > 6) {
-      if (!moved.current) event.currentTarget.setPointerCapture(event.pointerId);
+      if (!moved.current) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+        onPan?.();
+      }
       moved.current = true;
     }
     if (b && g.distance > 0) {

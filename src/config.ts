@@ -19,3 +19,9 @@ export const MIN_STEP_METERS = 8;
 
 /** Prefix printed into every QR sign: `darbak:<place id>`. */
 export const QR_PREFIX = 'darbak:';
+
+/** An average adult step, used to turn counted steps into metres walked. */
+export const STRIDE_METERS = 0.7;
+
+/** A GPS fix worse than this (metres, 68% radius) is ignored: it cannot tell a corridor from the next. */
+export const GPS_MAX_ACCURACY_METERS = 20;

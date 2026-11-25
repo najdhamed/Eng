@@ -111,3 +111,24 @@ describe('nearestPlace', () => {
     expect(travelFrom(DEFAULT_START_ID, 'wheelchair').size).toBe(PLACES.length);
   });
 });
+
+describe('every route in the demo hospital', () => {
+  it('connects every place to every other place, for every way of getting around', () => {
+    let routes = 0;
+    for (const mobility of ['walk', 'wheelchair', 'stroller'] as const) {
+      for (const from of PLACES) {
+        for (const to of PLACES) {
+          if (from.id === to.id) continue;
+          const label = `${mobility}: ${from.id} → ${to.id}`;
+          const route = planRoute(from.id, to.id, mobility);
+          expect(route, label).not.toBeNull();
+          expect(route!.steps.at(0)?.kind, label).toBe('start');
+          expect(route!.steps.at(-1)?.kind, label).toBe('arrive');
+          if (mobility !== 'walk') expect(route!.stepFree, label).toBe(true);
+          routes += 1;
+        }
+      }
+    }
+    expect(routes).toBe(PLACES.length * (PLACES.length - 1) * 3);
+  });
+});

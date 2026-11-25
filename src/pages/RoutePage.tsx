@@ -2,10 +2,13 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FloorMap } from '../components/FloorMap';
 import { FloorSwitcher } from '../components/FloorSwitcher';
 import { Icon } from '../components/Icon';
+import { LiveConsent } from '../components/LiveConsent';
+import { LivePanel } from '../components/LivePanel';
 import { MapViewport } from '../components/MapViewport';
 import { Pictogram, toneFor } from '../components/Pictogram';
 import { doorPoint, placeCenter } from '../domain/geometry';
 import type { Amenity, FloorId, Point } from '../domain/types';
+import { useLiveTracking } from '../hooks/useLiveTracking';
 import { useSpeech } from '../hooks/useSpeech';
 import { useWakeLock } from '../hooks/useWakeLock';
 import { useI18n } from '../i18n/I18nContext';
@@ -17,6 +20,7 @@ import { nearestPlace, type PlannedRoute } from '../navigation/planner';
 import type { Step } from '../navigation/directions';
 import type { RouteName } from '../router/useHashRoute';
 import { buzz } from '../services/device';
+import { readJSON, writeJSON } from '../services/storage';
 import { useJourney } from '../state/JourneyContext';
 
 /** Where the "you are here" dot sits while a step is on screen. */
@@ -39,12 +43,17 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
   const { route } = journey;
   const { speak, cancel, speaking } = useSpeech();
   const [panel, setPanel] = useState<'map' | 'steps'>('map');
+  const [consent, setConsent] = useState(false);
+  const [follow, setFollow] = useState(true);
   const stepTitle = useRef<HTMLHeadingElement>(null);
+  const { tracker, live } = useLiveTracking(route);
+  const liveOn = live?.status.active ?? false;
 
   const texts = useMemo(() => (route ? describeRoute(route, tr) : []), [route, tr]);
   const lastIndex = Math.max(0, (route?.steps.length ?? 1) - 1);
-  const index = Math.min(journey.state.stepIndex, lastIndex);
-  const arrived = journey.state.arrived;
+  // While live guidance runs, the walk decides the step; otherwise the person's taps do.
+  const index = liveOn && live ? live.view.stepIndex : Math.min(journey.state.stepIndex, lastIndex);
+  const arrived = journey.state.arrived || (liveOn && live?.view.phase === 'arrived');
   const step = route?.steps[index];
   const text = texts[index];
 
@@ -54,6 +63,19 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
   }, [index, route]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useWakeLock(Boolean(route) && !arrived);
+
+  // Keep the saved journey in step with the walk, and stop the sensors on arrival.
+  useEffect(() => {
+    if (!live?.status.active || !tracker) return;
+    const { stepIndex, phase } = live.view;
+    if (phase === 'arrived') {
+      journey.setStep(stepIndex);
+      journey.arrive();
+      tracker.stop();
+    } else if (stepIndex !== journey.state.stepIndex || journey.state.arrived) {
+      journey.setStep(stepIndex);
+    }
+  }, [live, tracker]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!route) navigate('places');
@@ -72,6 +94,13 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
       );
     else speak(index === 0 ? `${routeIntro(route, tr)} ${text.speech}` : text.speech);
   }, [route, text, index, arrived, tr, speak]);
+
+  const transfer = liveOn && live ? live.view.transfer : null;
+  const transferFloor = transfer?.toFloor;
+  useEffect(() => {
+    if (transferFloor === undefined) return;
+    speak(tr.t('live.floorSpeech', { floor: tr.floorName(transferFloor) }));
+  }, [transferFloor, speak, tr]);
 
   useEffect(() => () => cancel(), [cancel]);
 
@@ -94,27 +123,55 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
 
   const goTo = (next: number) => {
     buzz();
-    journey.setStep(next);
+    if (liveOn && tracker) tracker.goToStep(next);
+    else journey.setStep(next);
     requestAnimationFrame(() => stepTitle.current?.focus({ preventScroll: true }));
   };
   const onNext = () => {
     if (index < lastIndex) goTo(index + 1);
     else {
       buzz(60);
-      journey.arrive();
+      if (liveOn && tracker) tracker.reanchor(route.nodes.length - 1);
+      else journey.arrive();
     }
   };
 
+  const beginLive = (demo: boolean) => {
+    setConsent(false);
+    setFollow(true);
+    if (!demo) writeJSON('liveIntro', true);
+    void tracker?.start({ demo }, index);
+  };
+  // Tapping "Follow my location" asks the browser for permission, so the very
+  // first time it explains what is asked and why.
+  const onStartLive = () => {
+    if (readJSON('liveIntro', false)) beginLive(false);
+    else setConsent(true);
+  };
+
   const geometry = routeOnFloor(route, floor);
-  const you = arrived ? doorPoint(route.destination) : positionFor(step, route);
-  const youFloor: FloorId = arrived ? route.destination.floor : step.floor;
-  const progressIndex = arrived ? route.nodes.length : step.pathIndex;
+  const tracking = liveOn && live && !arrived;
+  const you = arrived
+    ? doorPoint(route.destination)
+    : tracking
+      ? live.view.point
+      : positionFor(step, route);
+  const youFloor: FloorId = arrived
+    ? route.destination.floor
+    : tracking
+      ? live.view.floor
+      : step.floor;
+  const progressIndex = arrived
+    ? route.nodes.length
+    : tracking
+      ? live.view.nodeIndex
+      : step.pathIndex;
   const forward = tr.dir === 'rtl' ? 'arrowLeft' : 'arrowRight';
   const back = tr.dir === 'rtl' ? 'arrowRight' : 'arrowLeft';
   const metrics = route.metrics;
 
   return (
-    <div className="route-page">
+    <div className={liveOn && !arrived ? 'route-page is-live' : 'route-page'}>
       <header className="route-head">
         <button
           type="button"
@@ -201,15 +258,22 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
             focus={{
               ...(floor === youFloor ? you : (geometry.destination ?? you)),
               scale: 1.6,
-              key: `${floor}:${index}:${arrived}`,
+              // While following, the map moves with the person; a pan stops that until Recenter.
+              key: tracking ? `${floor}:${youFloor}:${arrived}` : `${floor}:${index}:${arrived}`,
             }}
-            onRecenter={() => setFloor(youFloor)}
+            follow={follow}
+            onPan={() => setFollow(false)}
+            onRecenter={() => {
+              setFloor(youFloor);
+              setFollow(true);
+            }}
           >
             <FloorMap
               floor={floor}
               route={geometry}
               progressIndex={progressIndex}
               you={floor === youFloor ? you : null}
+              followYou={Boolean(tracking)}
               destinationId={route.destination.id}
             />
           </MapViewport>
@@ -302,45 +366,58 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
               </div>
             </section>
           ) : (
-            <section className="step-sign" aria-live="polite" aria-atomic="true">
-              <div className="step-sign__top">
-                <span className="step-sign__count">
-                  {tr.t('route.stepOf', { n: index + 1, total: route.steps.length })}
-                </span>
-                {speaking && (
-                  <span className="step-sign__speaking">
-                    <span className="wave" aria-hidden="true">
-                      <i />
-                      <i />
-                      <i />
-                      <i />
-                    </span>
-                    {tr.t('route.speaking')}
+            <>
+              {live && (
+                <LivePanel
+                  live={live}
+                  onStart={onStartLive}
+                  onStop={() => tracker?.stop()}
+                  onFloorDone={() => {
+                    buzz();
+                    tracker?.confirmFloor();
+                  }}
+                />
+              )}
+              <section className="step-sign" aria-live="polite" aria-atomic="true">
+                <div className="step-sign__top">
+                  <span className="step-sign__count">
+                    {tr.t('route.stepOf', { n: index + 1, total: route.steps.length })}
                   </span>
-                )}
-              </div>
-              <div className="step-sign__main">
-                <span className="step-sign__arrow">
-                  <Icon name={text.icon} size={56} strokeWidth={2.2} />
-                </span>
-                <div className="step-sign__words">
-                  <h2 className="step-sign__title" ref={stepTitle} tabIndex={-1}>
-                    {text.title}
-                  </h2>
-                  {text.detail && <p className="step-sign__detail">{text.detail}</p>}
+                  {speaking && (
+                    <span className="step-sign__speaking">
+                      <span className="wave" aria-hidden="true">
+                        <i />
+                        <i />
+                        <i />
+                        <i />
+                      </span>
+                      {tr.t('route.speaking')}
+                    </span>
+                  )}
                 </div>
-              </div>
-              <div
-                className="step-sign__progress"
-                role="progressbar"
-                aria-valuemin={1}
-                aria-valuemax={route.steps.length}
-                aria-valuenow={index + 1}
-                aria-label={tr.t('route.stepOf', { n: index + 1, total: route.steps.length })}
-              >
-                <span style={{ inlineSize: `${((index + 1) / route.steps.length) * 100}%` }} />
-              </div>
-            </section>
+                <div className="step-sign__main">
+                  <span className="step-sign__arrow">
+                    <Icon name={text.icon} size={56} strokeWidth={2.2} />
+                  </span>
+                  <div className="step-sign__words">
+                    <h2 className="step-sign__title" ref={stepTitle} tabIndex={-1}>
+                      {text.title}
+                    </h2>
+                    {text.detail && <p className="step-sign__detail">{text.detail}</p>}
+                  </div>
+                </div>
+                <div
+                  className="step-sign__progress"
+                  role="progressbar"
+                  aria-valuemin={1}
+                  aria-valuemax={route.steps.length}
+                  aria-valuenow={index + 1}
+                  aria-label={tr.t('route.stepOf', { n: index + 1, total: route.steps.length })}
+                >
+                  <span style={{ inlineSize: `${((index + 1) / route.steps.length) * 100}%` }} />
+                </div>
+              </section>
+            </>
           )}
           {!arrived && (
             <div
@@ -386,6 +463,13 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
           )}
         </aside>
       </div>
+
+      <LiveConsent
+        open={consent}
+        onAllow={() => beginLive(false)}
+        onDemo={() => beginLive(true)}
+        onClose={() => setConsent(false)}
+      />
 
       {!arrived && (
         <div className="route-controls">
