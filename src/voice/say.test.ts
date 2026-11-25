@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createSayer, type Recorded, type Synthetic } from './say';
 
-function setup(options: { covers?: boolean; plays?: boolean } = {}) {
+function setup(options: { covers?: boolean; plays?: boolean; loaded?: boolean } = {}) {
+  let loaded = options.loaded ?? true;
+  let finishLoading: () => void = () => undefined;
   const log: string[] = [];
   const resolvers: ((played: boolean) => void)[] = [];
   const recorded: Recorded = {
@@ -14,6 +16,14 @@ function setup(options: { covers?: boolean; plays?: boolean } = {}) {
       });
     },
     cancel: () => void log.push('recorded.cancel'),
+    loaded: () => loaded,
+    ready: () =>
+      new Promise<void>((resolve) => {
+        finishLoading = () => {
+          loaded = true;
+          resolve();
+        };
+      }),
   };
   const synthetic: Synthetic = {
     speak: (text) => void log.push(`synthetic:${text}`),
@@ -22,6 +32,7 @@ function setup(options: { covers?: boolean; plays?: boolean } = {}) {
   return {
     sayer: createSayer(recorded, synthetic),
     log,
+    finishLoading: () => finishLoading(),
     /** Settles the nth recorded sentence (0 = the first one spoken). */
     resolve: (played: boolean, nth = resolvers.length - 1) => resolvers[nth]?.(played),
   };
@@ -77,5 +88,33 @@ describe('createSayer', () => {
     await flush();
     expect(log).toContain('recorded.cancel');
     expect(log.filter((entry) => entry.startsWith('synthetic:'))).toEqual([]);
+  });
+
+  it('waits for a pack that is still loading, then uses it', async () => {
+    const { sayer, log, finishLoading } = setup({ plays: true, loaded: false });
+    sayer.say('مسافة', 'ar', 'normal');
+    await flush();
+    expect(log).toEqual(['synthetic.cancel']); // nothing spoken yet, and not by the device either
+    finishLoading();
+    await flush();
+    expect(log).toEqual(['synthetic.cancel', 'recorded:مسافة']);
+  });
+
+  it('after waiting, still falls back to the device voice when the pack cannot say it', async () => {
+    const { sayer, log, finishLoading } = setup({ covers: false, loaded: false });
+    sayer.say('كلمة', 'ar', 'normal');
+    finishLoading();
+    await flush();
+    expect(log).toEqual(['synthetic.cancel', 'recorded.cancel', 'synthetic:كلمة']);
+  });
+
+  it('drops a sentence that was waiting for the pack when a newer one or stop arrives', async () => {
+    const { sayer, log, finishLoading } = setup({ plays: true, loaded: false });
+    sayer.say('الأولى', 'ar', 'normal');
+    sayer.stop();
+    finishLoading();
+    await flush();
+    expect(log.some((entry) => entry.startsWith('recorded:'))).toBe(false);
+    expect(log.some((entry) => entry.startsWith('synthetic:'))).toBe(false);
   });
 });

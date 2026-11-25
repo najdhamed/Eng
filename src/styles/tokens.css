@@ -6,7 +6,8 @@
  * Themes: light (default), dark, and high contrast (black / white / yellow).
  */
 :root {
-  --font: 'Readex Pro', 'Noto Sans Arabic', 'Segoe UI', Tahoma, system-ui, sans-serif;
+  --font: 'Readex Pro Variable', 'Readex Pro', 'Noto Sans Arabic', 'Segoe UI', Tahoma, system-ui,
+    sans-serif;
   --text-scale: 1;
 
   --bg: #f2f6fc;

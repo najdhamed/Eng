@@ -5,6 +5,13 @@ export interface Recorded {
   canSpeak(text: string, locale: Locale): boolean;
   speak(text: string, locale: Locale, rate: 'slow' | 'normal' | 'fast'): Promise<boolean>;
   cancel(): void;
+  /**
+   * Optional: whether the pack for this language has finished loading, and a
+   * promise that settles when it has (or soon after, if it is slow). A
+   * sentence spoken the moment a page opens would otherwise miss the pack.
+   */
+  loaded?(locale: Locale): boolean;
+  ready?(locale: Locale): Promise<void>;
 }
 
 export interface Synthetic {
@@ -25,14 +32,26 @@ export function createSayer(recorded: Recorded, synthetic: Synthetic) {
     say(text: string, locale: Locale, rate: 'slow' | 'normal' | 'fast', useRecorded = true): void {
       const mine = ++ticket;
       synthetic.cancel();
-      if (useRecorded && recorded.canSpeak(text, locale)) {
-        void recorded.speak(text, locale, rate).then((played) => {
-          if (!played && mine === ticket) synthetic.speak(text, locale, rate);
+
+      const speakNow = () => {
+        if (useRecorded && recorded.canSpeak(text, locale)) {
+          void recorded.speak(text, locale, rate).then((played) => {
+            if (!played && mine === ticket) synthetic.speak(text, locale, rate);
+          });
+          return;
+        }
+        recorded.cancel();
+        synthetic.speak(text, locale, rate);
+      };
+
+      if (useRecorded && recorded.ready && recorded.loaded && !recorded.loaded(locale)) {
+        // The pack is still arriving: wait for it rather than fall back by mistake.
+        void recorded.ready(locale).then(() => {
+          if (mine === ticket) speakNow();
         });
         return;
       }
-      recorded.cancel();
-      synthetic.speak(text, locale, rate);
+      speakNow();
     },
 
     stop(): void {

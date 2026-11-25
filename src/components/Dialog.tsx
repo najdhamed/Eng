@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { useI18n } from '../i18n/I18nContext';
 import { Icon } from './Icon';
 
@@ -18,6 +18,19 @@ export function Dialog({ title, open, onClose, children, footer }: DialogProps) 
   const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  const body = useRef<HTMLDivElement>(null);
+  // Long content scrolls; a scrolling area must be reachable with the keyboard.
+  const [scrolls, setScrolls] = useState(false);
+
+  useEffect(() => {
+    const element = body.current;
+    if (!element || !open || typeof ResizeObserver === 'undefined') return;
+    const measure = () => setScrolls(element.scrollHeight > element.clientHeight + 1);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [open, children]);
 
   useEffect(() => {
     const dialog = ref.current;
@@ -58,7 +71,13 @@ export function Dialog({ title, open, onClose, children, footer }: DialogProps) 
           </button>
         )}
       </div>
-      <div className="sheet__body">{children}</div>
+      <div
+        ref={body}
+        className="sheet__body"
+        {...(scrolls ? { tabIndex: 0, role: 'group', 'aria-labelledby': titleId } : {})}
+      >
+        {children}
+      </div>
       {footer && <div className="sheet__foot">{footer}</div>}
     </dialog>
   );

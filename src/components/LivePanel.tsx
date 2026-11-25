@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useI18n } from '../i18n/I18nContext';
 import type { LiveSnapshot } from '../services/live';
 import { Icon } from './Icon';
@@ -13,6 +14,16 @@ interface LivePanelProps {
 export function LivePanel({ live, onStart, onStop, onFloorDone }: LivePanelProps) {
   const tr = useI18n();
   const { status, view } = live;
+  const floorButton = useRef<HTMLButtonElement>(null);
+  const waitingForFloor = status.active && Boolean(view.transfer);
+
+  // The "I am on the new floor" button is the one thing the person must tap here,
+  // so bring it into view above the fixed buttons rather than leave it below the fold.
+  useEffect(() => {
+    if (!waitingForFloor) return;
+    const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    floorButton.current?.scrollIntoView({ block: 'nearest', behavior: reduce ? 'auto' : 'smooth' });
+  }, [waitingForFloor]);
 
   if (!status.active) {
     return (
@@ -97,7 +108,12 @@ export function LivePanel({ live, onStart, onStop, onFloorDone }: LivePanelProps
               floor: tr.floorName(view.transfer.toFloor),
             })}
           </p>
-          <button type="button" className="btn btn--primary btn--lg" onClick={onFloorDone}>
+          <button
+            ref={floorButton}
+            type="button"
+            className="btn btn--primary btn--lg"
+            onClick={onFloorDone}
+          >
             <Icon name={view.transfer.kind === 'lift' ? 'lift' : 'stairs'} />
             {tr.t('live.floorDone', { floor: tr.floorName(view.transfer.toFloor) })}
           </button>

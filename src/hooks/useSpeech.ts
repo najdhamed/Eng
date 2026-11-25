@@ -20,7 +20,11 @@ export function useSpeech() {
   );
 
   useEffect(() => {
-    void voiceEngine.load(locale);
+    void voiceEngine.load(locale).then(() => {
+      // Keep the recorded clips for offline use, unless the person asked to save data.
+      const saveData = (navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
+      if (!saveData) void voiceEngine.warm(locale);
+    });
   }, [locale]);
 
   // The device voice the person picked for this language, if it is still installed.

@@ -25,7 +25,7 @@ export const en: Record<MessageKey, string> = {
   'a11y.clear': 'Clear search',
   'a11y.floors': 'Choose a floor',
   'a11y.done': 'Done',
-  'lang.switch': 'ع',
+  'lang.switch': 'العربية',
 
   'floor.0': 'Ground floor',
   'floor.1': 'Floor 1',

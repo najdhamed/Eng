@@ -57,6 +57,7 @@ export class VoiceEngine {
   private readonly packs = new Map<Locale, Map<string, Entry>>();
   private readonly keyCache = new Map<Locale, Set<string>>();
   private readonly loading = new Map<Locale, Promise<void>>();
+  private readonly loadedLocales = new Set<Locale>();
   private readonly listeners = new Set<() => void>();
   private snapshot: EngineSnapshot = { version: 0, speaking: false };
   private playing: Playback | null = null;
@@ -134,7 +135,58 @@ export class VoiceEngine {
       // Storage unavailable: only the shipped pack.
     }
     this.keyCache.delete(locale);
+    this.loadedLocales.add(locale);
     this.update({}, true);
+  }
+
+  /** True once the pack for this language has been read (even if it turned out empty). */
+  loaded(locale: Locale): boolean {
+    return this.loadedLocales.has(locale);
+  }
+
+  /** Starts loading if needed and resolves when done, or after `waitMs` if the network is slow. */
+  ready(locale: Locale, waitMs = 1500): Promise<void> {
+    return Promise.race([
+      this.load(locale),
+      new Promise<void>((resolve) => setTimeout(resolve, waitMs)),
+    ]);
+  }
+
+  private readonly warmed = new Map<Locale, Promise<number>>();
+
+  /**
+   * Downloads the shipped clips ahead of time (a few at a time) so the service
+   * worker has them in its cache before the Wi-Fi drops. Nothing is decoded.
+   * Resolves with how many clips were fetched; a failure just stops early.
+   */
+  warm(locale: Locale, concurrency = 3): Promise<number> {
+    let pending = this.warmed.get(locale);
+    if (!pending) {
+      pending = this.warmNow(locale, concurrency);
+      this.warmed.set(locale, pending);
+    }
+    return pending;
+  }
+
+  private async warmNow(locale: Locale, concurrency: number): Promise<number> {
+    await this.load(locale);
+    const queue = [...this.pack(locale).values()].filter((entry) => entry.origin === 'shipped');
+    let fetched = 0;
+    let failed = false;
+    const worker = async () => {
+      for (let entry = queue.shift(); entry && !failed; entry = queue.shift()) {
+        try {
+          await this.deps.fetchBytes(
+            this.deps.packUrl(locale, entry.file ?? `${atomId(entry.key)}.wav`),
+          );
+          fetched += 1;
+        } catch {
+          failed = true; // Offline or the pack changed: try again on the next visit.
+        }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.max(1, concurrency) }, worker));
+    return fetched;
   }
 
   has(locale: Locale, key: string): boolean {

@@ -153,8 +153,13 @@
 }
 
 .icon-btn--text {
+  /* The language name ("English", "العربية") is wider than a square button. */
+  inline-size: auto;
+  min-inline-size: var(--tap);
+  padding-inline: 12px;
   font-weight: 700;
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm, 0.9rem);
+  white-space: nowrap;
 }
 
 .icon-btn--ghost {

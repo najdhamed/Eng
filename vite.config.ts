@@ -1,11 +1,57 @@
+import { createHash } from 'node:crypto';
+import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
+import { join, relative, resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { defineConfig } from 'vitest/config';
+import { defineConfig, type Plugin } from 'vitest/config';
+
+/**
+ * Fills public/sw.js with the files this build produced, so that the very
+ * first visit is already usable offline (not only the second one).
+ * The recorded voice pack is left out on purpose: it is cached as it is used.
+ */
+function precache(): Plugin {
+  let outDir = 'dist';
+  return {
+    name: 'darbak-precache',
+    apply: 'build',
+    configResolved(config) {
+      outDir = resolve(config.root, config.build.outDir);
+    },
+    closeBundle() {
+      const files: string[] = [];
+      const walk = (dir: string) => {
+        for (const name of readdirSync(dir)) {
+          const path = join(dir, name);
+          if (statSync(path).isDirectory()) walk(path);
+          else files.push(relative(outDir, path).split('\\').join('/'));
+        }
+      };
+      walk(outDir);
+
+      const urls = files
+        .filter((file) => file !== 'sw.js' && !file.endsWith('.map') && !file.startsWith('voice/'))
+        .sort();
+      const hash = createHash('sha256');
+      for (const file of urls) hash.update(file).update(readFileSync(join(outDir, file)));
+      const build = hash.digest('hex').slice(0, 10);
+
+      const target = join(outDir, 'sw.js');
+      const source = readFileSync(target, 'utf8');
+      const list = JSON.stringify(['./', ...urls.map((file) => `./${file}`)]);
+      const filled = source
+        .replace('__BUILD_ID__', build)
+        .replace(/\/\*__PRECACHE__\*\/\s*\[[^\]]*\]/, list);
+      if (filled === source) throw new Error('darbak-precache: sw.js has no placeholders to fill');
+      writeFileSync(target, filled);
+    },
+  };
+}
 
 // `base: './'` keeps every asset path relative, so the same build runs from a
 // domain root, a GitHub Pages sub-path or any static host without changes.
 export default defineConfig({
   base: './',
-  plugins: [react()],
+  plugins: [react(), precache()],
   build: {
     target: 'es2020',
     sourcemap: true,
@@ -16,7 +62,14 @@ export default defineConfig({
     include: ['src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      include: ['src/navigation/**', 'src/search/**', 'src/i18n/**', 'src/services/qr.ts'],
+      include: [
+        'src/navigation/**',
+        'src/search/**',
+        'src/i18n/**',
+        'src/voice/**',
+        'src/services/**',
+      ],
+      exclude: ['src/**/*.test.ts'],
     },
   },
 });

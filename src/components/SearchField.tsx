@@ -49,7 +49,7 @@ export function SearchField({ value, onChange, onSubmit, controls }: SearchField
           voice.clearError();
           onChange(event.target.value);
         }}
-        aria-controls={controls}
+        aria-controls={value.trim() ? controls : undefined}
       />
       {value && (
         <button

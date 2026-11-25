@@ -112,6 +112,9 @@ export const FloorMap = memo(function FloorMap({
           const rect = place.rect!;
           const c = placeCenter(place);
           const label = tr.name(place.short ?? place.name);
+          const fullName = tr.name(place.name);
+          // A button's name must contain the words printed on it.
+          const spoken = fullName.includes(label) ? fullName : `${label}، ${fullName}`;
           const interactive = Boolean(onSelect) && place.category !== 'core';
           const isDestination = place.id === destinationId;
           const compact = rect.h < 120;
@@ -123,7 +126,7 @@ export const FloorMap = memo(function FloorMap({
                 ? {
                     role: 'button',
                     tabIndex: 0,
-                    'aria-label': `${tr.name(place.name)}، ${tr.floorName(floor)}`,
+                    'aria-label': `${spoken}، ${tr.floorName(floor)}`,
                     onClick: () => select(place),
                     onKeyDown: (event: KeyboardEvent) => onKey(event, place),
                   }

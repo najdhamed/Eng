@@ -47,6 +47,22 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
   const [consent, setConsent] = useState(false);
   const [follow, setFollow] = useState(true);
   const stepTitle = useRef<HTMLHeadingElement>(null);
+  const page = useRef<HTMLDivElement>(null);
+  const head = useRef<HTMLElement>(null);
+
+  // The sticky map sits right under the header, whose height changes with the
+  // text size and the language. Measure it so the map never slides underneath.
+  const hasRoute = Boolean(route);
+  useEffect(() => {
+    const header = head.current;
+    const root = page.current;
+    if (!header || !root || typeof ResizeObserver === 'undefined') return;
+    const measure = () => root.style.setProperty('--route-head-h', `${header.offsetHeight}px`);
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(header);
+    return () => observer.disconnect();
+  }, [hasRoute]);
   const { tracker, live } = useLiveTracking(route);
   const liveOn = live?.status.active ?? false;
 
@@ -169,8 +185,8 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
   const metrics = route.metrics;
 
   return (
-    <div className={liveOn && !arrived ? 'route-page is-live' : 'route-page'}>
-      <header className="route-head">
+    <div ref={page} className={liveOn && !arrived ? 'route-page is-live' : 'route-page'}>
+      <header ref={head} className="route-head">
         <button
           type="button"
           className="icon-btn icon-btn--ghost"

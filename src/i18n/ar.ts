@@ -28,7 +28,7 @@ export const ar = {
   'a11y.clear': 'امسح البحث',
   'a11y.floors': 'اختر الدور',
   'a11y.done': 'خلصت',
-  'lang.switch': 'EN',
+  'lang.switch': 'English',
 
   'floor.0': 'الدور الأرضي',
   'floor.1': 'الدور الأول',

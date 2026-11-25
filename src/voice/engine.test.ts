@@ -115,6 +115,49 @@ describe('VoiceEngine: loading', () => {
   });
 });
 
+describe('VoiceEngine: warming the offline cache', () => {
+  it('downloads every shipped clip once, and none of the clips recorded on this device', async () => {
+    const h = harness(shippedFor('امش سيدا', 'مسافة', 'متر'));
+    await h.store.put('ar', clip('لف يمين'));
+    expect(await h.engine.warm('ar')).toBe(3);
+    expect(h.fetched).toHaveLength(3);
+    expect(h.fetched.every((url) => url.startsWith('/voice/ar/'))).toBe(true);
+    expect(await h.engine.warm('ar')).toBe(3);
+    expect(h.fetched).toHaveLength(3);
+  });
+
+  it('does nothing when no pack is shipped', async () => {
+    expect(await harness().engine.warm('ar')).toBe(0);
+  });
+
+  it('stops quietly when a download fails, and does not throw', async () => {
+    const texts = ['امش سيدا', 'مسافة', 'متر', 'لف يمين'];
+    let calls = 0;
+    const engine = new VoiceEngine({
+      store: new MemoryClipStore(),
+      audio: { decode: async () => null, play: async () => ({ stop: () => undefined }) },
+      fetchBytes: async () => {
+        calls += 1;
+        if (calls > 1) throw new Error('offline');
+        return bytes('x');
+      },
+      fetchJson: async () => ({
+        version: 1,
+        locale: 'ar',
+        clips: texts.map((text) => ({
+          key: normalizeSpeech(text),
+          text,
+          file: `${atomId(normalizeSpeech(text))}.wav`,
+          ms: 400,
+        })),
+      }),
+      packUrl: (locale: Locale, file: string) => `/voice/${locale}/${file}`,
+    });
+    expect(await engine.warm('ar', 1)).toBe(1);
+    expect(calls).toBe(2);
+  });
+});
+
 describe('VoiceEngine: speaking', () => {
   it('plays the clips of a covered sentence in order', async () => {
     const h = harness();
@@ -263,5 +306,34 @@ describe('VoiceEngine: recording and sharing', () => {
     await h.engine.save('ar', clip('مسافة'));
     await h.engine.preview('ar', normalizeSpeech('مسافة'));
     expect(h.played.at(-1)!.buffers).toEqual(['wav:مسافة']);
+  });
+});
+
+describe('VoiceEngine: knowing when the pack is ready', () => {
+  it('reports loaded only after the pack has been read', async () => {
+    const h = harness(shippedFor('مسافة'));
+    expect(h.engine.loaded('ar')).toBe(false);
+    await h.engine.ready('ar');
+    expect(h.engine.loaded('ar')).toBe(true);
+    expect(h.engine.loaded('en')).toBe(false);
+  });
+
+  it('stops waiting after the time limit when the pack is slow, without giving up on it', async () => {
+    let release: () => void = () => undefined;
+    const slow = new VoiceEngine({
+      store: new MemoryClipStore(),
+      audio: { decode: async () => null, play: async () => ({ stop: () => undefined }) },
+      fetchBytes: async () => bytes('x'),
+      fetchJson: () =>
+        new Promise((resolve) => {
+          release = () => resolve({ version: 1, locale: 'ar', clips: [] });
+        }),
+      packUrl: (locale: Locale, file: string) => `/voice/${locale}/${file}`,
+    });
+    await slow.ready('ar', 5); // gives up waiting…
+    expect(slow.loaded('ar')).toBe(false);
+    release(); // …but the load itself carries on
+    await slow.load('ar');
+    expect(slow.loaded('ar')).toBe(true);
   });
 });
