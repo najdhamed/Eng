@@ -35,6 +35,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Static files do not change by request headers, but some servers (the Vite preview
+// server, CDNs) send `Vary: Origin`, which would make a cached copy miss. Ignore Vary.
+const lookup = (request) => caches.match(request, { ignoreVary: true });
+
 const remember = (request, response) => {
   if (!response || !response.ok) return response;
   const copy = response.clone();
@@ -54,14 +58,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => remember('./index.html', response))
-        .catch(() => caches.match('./index.html').then((hit) => hit || caches.match('./'))),
+        .catch(() => lookup('./index.html').then((hit) => hit || lookup('./'))),
     );
     return;
   }
 
   if (url.pathname.includes('/voice/')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
+      lookup(request).then((cached) => {
         const refresh = fetch(request).then((response) => remember(request, response));
         if (!cached) return refresh;
         refresh.catch(() => undefined); // offline: the cached clip is enough
@@ -72,8 +76,6 @@ self.addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches
-      .match(request)
-      .then((cached) => cached || fetch(request).then((r) => remember(request, r))),
+    lookup(request).then((cached) => cached || fetch(request).then((r) => remember(request, r))),
   );
 });
