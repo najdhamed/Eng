@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test';
+import QRCode from 'qrcode';
 import { GROUND_ROUTE, seed, watchErrors } from './helpers';
 
 /** Waits until the service worker is in charge and has stored the whole app. */
@@ -56,6 +57,34 @@ test.describe('offline', () => {
     await page.reload();
     await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+  });
+
+  test('a photographed sign is read on the phone with no connection at all', async ({
+    page,
+    context,
+  }) => {
+    await seed(context, { locale: 'en' });
+    await page.goto('/'); // the sign scanner is deliberately NOT opened while online
+    await waitForOfflineReady(page);
+    await context.setOffline(true);
+    await page.reload();
+
+    const requests: string[] = [];
+    page.on('request', (request) => {
+      if (!request.url().startsWith('data:') && !request.url().startsWith('blob:')) {
+        requests.push(new URL(request.url()).origin);
+      }
+    });
+    await page.goto('/#lost');
+    const sign = await QRCode.toBuffer('darbak:0-cafeteria', { width: 480, margin: 4 });
+    await page
+      .locator('input[type=file]')
+      .first()
+      .setInputFiles({ name: 'sign.png', mimeType: 'image/png', buffer: sign });
+
+    await expect(page.getByText(/Found you! You are at/)).toBeVisible({ timeout: 15_000 });
+    // Nothing but the site itself was ever asked for: the photo never leaves the phone.
+    expect(new Set(requests).size).toBeLessThanOrEqual(1);
   });
 
   test('the app can be installed: manifest and icons are valid and reachable', async ({
