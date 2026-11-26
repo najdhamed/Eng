@@ -4,16 +4,18 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { chromium } from 'playwright';
 
 const svg = await readFile(new URL('../public/favicon.svg', import.meta.url), 'utf8');
-const browser = await chromium.launch();
+const browser = await chromium.launch(
+  process.env.PW_CHROMIUM ? { executablePath: process.env.PW_CHROMIUM } : {},
+);
 const page = await browser.newPage();
 
 /** `pad` is the share of the canvas kept clear around the artwork (maskable icons need ~10%). */
 async function render(size, pad, name, fullBleed) {
   const inner = Math.round(size * (1 - pad * 2));
   const art = fullBleed
-    ? svg.replace(/<rect[^>]*\/>/, '<rect width="64" height="64" fill="#1D5FD0"/>')
+    ? svg.replace(/<rect[^>]*\/>/, '<rect width="64" height="64" fill="#2156A5"/>')
     : svg;
-  const html = `<body style="margin:0;background:${fullBleed ? '#1D5FD0' : 'transparent'}">
+  const html = `<body style="margin:0;background:${fullBleed ? '#2156A5' : 'transparent'}">
     <div style="width:${size}px;height:${size}px;display:grid;place-items:center">
       <div style="width:${inner}px;height:${inner}px">${art.replace('<svg ', `<svg width="${inner}" height="${inner}" `)}</div>
     </div></body>`;

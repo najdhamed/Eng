@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.1.2 — 2026-11-26
+
+The Darbak brand identity (symbol, colours) is now what the app looks like.
+
+**Changed**
+
+- The D-Pin symbol replaces the old route glyph in the header, the favicon and the home-screen icons (192, 512, maskable, Apple).
+- Colours follow the identity: Royal Blue `#2156A5` for buttons and the route, Deep Navy `#0B162B` for text and the top bar, Light Blue `#77A9FF` as the accent in dark mode. Text contrast stays above 4.5:1 everywhere that was checked.
+- The browser bar and the install splash use the identity colours (`theme_color` Royal Blue, `background_color` Deep Navy).
+- The logo files are in `docs/brand/` and at the top of the README.
+
 ## 1.1.1 — 2026-11-26
 
 The recorded-voice tooling was taken out again; everything else from 1.1.0 stays.

@@ -3,6 +3,7 @@ import { useI18n } from '../i18n/I18nContext';
 import type { RouteName } from '../router/useHashRoute';
 import { usePrefs } from '../state/PrefsContext';
 import { useToast } from '../state/ToastContext';
+import { BrandMark } from './BrandMark';
 import { Icon } from './Icon';
 import { NAV_ITEMS } from './navItems';
 
@@ -29,7 +30,7 @@ export function Header({ route }: { route: RouteName }) {
       <div className="topbar__inner">
         <a className="brand" href="#home">
           <span className="brand__mark" aria-hidden="true">
-            <Icon name="route" size={24} strokeWidth={2.1} />
+            <BrandMark />
           </span>
           <span className="brand__text">
             <span className="brand__name">{tr.t('app.name')}</span>

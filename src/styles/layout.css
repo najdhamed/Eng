@@ -67,14 +67,11 @@ body::before {
 }
 
 .brand__mark {
-  inline-size: 44px;
-  block-size: 44px;
+  inline-size: 40px;
+  block-size: 40px;
   flex: none;
-  border-radius: 14px;
-  display: grid;
-  place-items: center;
-  background: var(--on-sign);
-  color: var(--sign);
+  display: block;
+  color: var(--on-sign);
 }
 
 .brand__text {

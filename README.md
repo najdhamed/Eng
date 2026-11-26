@@ -1,5 +1,7 @@
 <div align="center">
 
+<img src="docs/brand/darbak-lockup.svg" alt="دربك Darbak" height="96">
+
 # دربك · Darbak
 
 **دليل داخلي للمستشفى بإرشاد صوتي سعودي، مصمم لكبار السن وأصحاب الهمم والزوار أول مرة.**
@@ -7,9 +9,9 @@
 **An accessible, bilingual indoor-wayfinding web app for hospitals, with Saudi-Arabic voice guidance.**
 
 [![CI](https://github.com/najdhamed/Eng/actions/workflows/ci.yml/badge.svg)](https://github.com/najdhamed/Eng/actions/workflows/ci.yml)
-![TypeScript](https://img.shields.io/badge/TypeScript-strict-1D5FD0)
-![React](https://img.shields.io/badge/React-18-1D5FD0)
-![License](https://img.shields.io/badge/license-MIT-1D5FD0)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-2156A5)
+![React](https://img.shields.io/badge/React-18-2156A5)
+![License](https://img.shields.io/badge/license-MIT-2156A5)
 
 Built for **MEDATHON 2026** · **[جرّب الموقع · Live demo](https://najdhamed.github.io/Eng/)**
 
@@ -108,6 +110,10 @@ To try voice search, the live camera and **Follow my location** on a phone, open
 ### The voice
 
 Spoken directions use the voice that is installed on the visitor's phone (the browser's Web Speech API). Darbak asks for a Saudi Arabic voice (`ar-SA`) first, then any Gulf voice, then any Arabic voice, and says so in Settings when it had to settle for a closer one. No audio is shipped with the site and nothing is sent anywhere.
+
+### Brand
+
+The identity (symbol, lockups, colours, type) lives in [`docs/brand/`](docs/brand): the D-Pin symbol, the horizontal and stacked lockups and their reverse versions for dark backgrounds. The app uses its palette (Deep Navy `#0B162B`, Royal Blue `#2156A5`, Light Blue `#77A9FF`, White) and Readex Pro. Home-screen icons are rendered from `public/favicon.svg` with `npm run icons`.
 
 ### Deploying
 
