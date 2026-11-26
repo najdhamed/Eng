@@ -55,3 +55,27 @@ export async function seed(context: BrowserContext, options: Seed = {}): Promise
 export const TWO_FLOOR_ROUTE = { startId: '0-entrance', destinationId: '2-internal' };
 /** A short route on the ground floor. */
 export const GROUND_ROUTE = { startId: '0-entrance', destinationId: '0-cafeteria' };
+
+/** A short mono 16-bit 16 kHz WAV holding a quiet tone: stands in for a recorded clip. */
+export function makeWav(milliseconds: number): Buffer {
+  const rate = 16_000;
+  const samples = Math.round((rate * milliseconds) / 1000);
+  const data = Buffer.alloc(samples * 2);
+  for (let i = 0; i < samples; i += 1) {
+    data.writeInt16LE(Math.round(Math.sin((2 * Math.PI * 440 * i) / rate) * 6000), i * 2);
+  }
+  const header = Buffer.alloc(44);
+  header.write('RIFF', 0);
+  header.writeUInt32LE(36 + data.length, 4);
+  header.write('WAVEfmt ', 8);
+  header.writeUInt32LE(16, 16);
+  header.writeUInt16LE(1, 20); // PCM
+  header.writeUInt16LE(1, 22); // mono
+  header.writeUInt32LE(rate, 24);
+  header.writeUInt32LE(rate * 2, 28);
+  header.writeUInt16LE(2, 32);
+  header.writeUInt16LE(16, 34);
+  header.write('data', 36);
+  header.writeUInt32LE(data.length, 40);
+  return Buffer.concat([header, data]);
+}

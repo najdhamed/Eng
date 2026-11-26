@@ -103,6 +103,16 @@ export function PrefsPage() {
             { value: 'fast', label: tr.t('rate.fast') },
           ]}
         />
+        <Switch
+          label={tr.t('prefs.voicePack')}
+          description={
+            speech.packClips > 0
+              ? `${tr.t('prefs.voicePackSub')} · ${tr.t('prefs.voicePackCount', { n: speech.packClips })}`
+              : tr.t('prefs.voicePackNone')
+          }
+          checked={prefs.voicePack}
+          onChange={(voicePack) => set({ voicePack })}
+        />
         <div className="settings__row">
           <button
             type="button"

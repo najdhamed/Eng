@@ -10,6 +10,7 @@ Darbak is a static single-page app: React 18 and TypeScript (strict), built with
 | Navigation | `src/navigation`              | domain                       | Graph, Dijkstra, route planning, step generation                                           |
 | Language   | `src/i18n`, `src/search`      | domain, navigation types     | Messages, plural rules, step wording, search                                               |
 | Services   | `src/services`                | browser APIs                 | Speech, QR decoding, storage, wake lock, location, motion sensor, live tracker             |
+| Voice      | `src/voice`                   | domain, i18n                 | Studio voice: phrase catalogue, segmentation, WAV processing, clip player                  |
 | State      | `src/state`                   | domain, navigation, services | Preferences and the current journey, persisted to `localStorage`                           |
 | UI         | `src/components`, `src/pages` | everything above             | React components and pages                                                                 |
 
@@ -67,13 +68,15 @@ Indoors, GPS drifts by tens of metres and the web has no barometer, so Darbak do
 - **Lifts and stairs** take zero metres in the graph and cannot be sensed, so the tracker waits (`awaitingFloor`) until the person taps "I am on floor X", presses Next, or scans a sign.
 - **Permission** is requested only from a tap on "Allow and start", after a sheet that says what is used and why. Location and (on iPhone) motion are requested in the same tap. A refusal never blocks the app: the buttons keep working and the panel says what is missing. Nothing is stored or sent.
 
-## Speech
+## Speech: studio voice first, device voice second
 
-`useSpeech` (`src/hooks/useSpeech.ts`) speaks every sentence through the browser's Web Speech API (`src/services/speech.ts`). The voice is picked by language preference: Saudi Arabic (`ar-SA`), then other Gulf voices, then any Arabic voice; English prefers `en-GB`. `isFallbackVoice` lets Settings say when the closest voice had to be used. Nothing is downloaded and nothing leaves the phone.
+`useSpeech` → `sayer` (`src/voice/say.ts`) decides per sentence. The clip player (`src/voice/engine.ts`) can speak a sentence only if **every word** is covered by clips: the sentence is normalised (diacritics, punctuation, digits) and covered with the fewest fragments by dynamic programming (`text.ts`). If one word is missing the whole sentence goes to the device voice (Saudi voices first, `services/speech.ts`), because two voices in one sentence is worse than one. The catalogue (`catalogue.ts`) is derived from the app's own message templates and every route, and a test proves it can spell out every sentence the app can say.
+
+The clips are made ahead of time by `scripts/voicePack.ts` (`npm run voice:generate`, or the **Generate Saudi voice** workflow): each catalogue phrase is sent once to Azure AI Speech (SSML, 16 kHz mono WAV), trimmed, faded and levelled (`wav.ts`) so the pieces join cleanly, and written to `public/voice/<locale>/` with a manifest. The key lives only in a repository secret or the developer's shell. The shipped pack is warmed into the service-worker cache in the background (unless Data Saver is on). A sentence spoken the instant a page opens waits (up to 1.5 s) for the manifest rather than falling back by mistake.
 
 ## Offline, install and security
 
-- **Service worker** (`public/sw.js`): the build (`vite.config.ts`) writes the exact list of built files into its precache and a content hash into the cache name, so the **first** visit already works offline and a new deploy replaces the old cache. Pages are network-first and build files are cache-first. Covered by an offline test that goes offline right after the first load.
+- **Service worker** (`public/sw.js`): the build (`vite.config.ts`) writes the exact list of built files into its precache and a content hash into the cache name, so the **first** visit already works offline and a new deploy replaces the old cache. Pages are network-first, build files cache-first, voice clips stale-while-revalidate. Covered by an offline test that goes offline right after the first load.
 - **Install**: manifest with 192/512 and maskable PNG icons, apple-touch icon.
 - **Content-Security-Policy** (meta tag, build only): scripts, styles, fonts and data from the site itself, no embeds or plug-ins. The e2e suite fails on any violation. The font is self-hosted, so no request leaves the device.
 - **Resilient state**: saved settings and journeys are sanitised on load (`sanitizePrefs`, `sanitizeJourney`), storage that throws is tolerated, and an error boundary shows a bilingual "reload / start again" screen instead of a white page.

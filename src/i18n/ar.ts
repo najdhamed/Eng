@@ -246,6 +246,11 @@ export const ar = {
   'prefs.voiceName': 'الصوت المستخدم: {name}',
   'prefs.voiceMissing': 'ما لقيت صوت سعودي في جهازك، بستخدم أقرب صوت عربي.',
   'prefs.voiceUnsupported': 'هذا المتصفح ما يدعم القراءة الصوتية.',
+
+  'prefs.voicePack': 'الصوت السعودي المدمج',
+  'prefs.voicePackSub': 'صوت سعودي واضح يجي مع دربك، بدل صوت الجوال',
+  'prefs.voicePackNone': 'مو متوفر لين الحين. دربك يستخدم صوت الجوال.',
+  'prefs.voicePackCount': '{n} مقطع',
   'prefs.display': 'العرض',
   'prefs.textSize': 'حجم الخط',
   'size.s': 'عادي',

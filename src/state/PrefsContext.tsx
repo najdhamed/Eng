@@ -19,6 +19,8 @@ export interface Prefs {
   readonly locale: Locale;
   readonly mobility: Mobility;
   readonly voice: boolean;
+  /** Use the studio voice shipped with the site when it can say the sentence. */
+  readonly voicePack: boolean;
   readonly rate: SpeechRate;
   readonly textSize: TextSize;
   readonly theme: Theme;
@@ -30,6 +32,7 @@ export const DEFAULT_PREFS: Prefs = {
   locale: 'ar',
   mobility: 'walk',
   voice: true,
+  voicePack: true,
   rate: 'normal',
   textSize: 's',
   theme: 'system',
@@ -49,6 +52,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     locale: oneOf(r.locale, ['ar', 'en'], DEFAULT_PREFS.locale),
     mobility: oneOf(r.mobility, ['walk', 'wheelchair', 'stroller'], DEFAULT_PREFS.mobility),
     voice: typeof r.voice === 'boolean' ? r.voice : DEFAULT_PREFS.voice,
+    voicePack: typeof r.voicePack === 'boolean' ? r.voicePack : DEFAULT_PREFS.voicePack,
     rate: oneOf(r.rate, ['slow', 'normal', 'fast'], DEFAULT_PREFS.rate),
     textSize: oneOf(r.textSize, ['s', 'm', 'l'], DEFAULT_PREFS.textSize),
     theme: oneOf(r.theme, ['system', 'light', 'dark'], DEFAULT_PREFS.theme),

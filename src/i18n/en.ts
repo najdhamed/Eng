@@ -248,6 +248,12 @@ export const en: Record<MessageKey, string> = {
   'prefs.voiceName': 'Voice in use: {name}',
   'prefs.voiceMissing': 'No matching voice on this device, using the closest one.',
   'prefs.voiceUnsupported': 'This browser cannot read text aloud.',
+
+  'prefs.voicePack': 'Saudi studio voice',
+  'prefs.voicePackSub':
+    'A clear Saudi Arabic voice that comes with Darbak, instead of the phone’s voice',
+  'prefs.voicePackNone': 'Not installed yet. Darbak uses the phone’s own voice.',
+  'prefs.voicePackCount': '{n} clips',
   'prefs.display': 'Display',
   'prefs.textSize': 'Text size',
   'size.s': 'Regular',

@@ -15,7 +15,7 @@ import { JourneyProvider, useJourney } from './state/JourneyContext';
 import { PrefsProvider, usePrefs } from './state/PrefsContext';
 import { ToastProvider, useToast } from './state/ToastContext';
 
-// The staff-only sign printer (and the QR generator it needs) loads when first opened.
+// Staff-only pages (and the QR generator they need) load when first opened.
 const SignsPage = lazy(() => import('./pages/SignsPage').then((m) => ({ default: m.SignsPage })));
 
 function Shell() {
