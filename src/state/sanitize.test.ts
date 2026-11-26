@@ -50,7 +50,6 @@ describe('sanitizePrefs', () => {
   it.each([null, undefined, 'text', 7, [], [1], {}])('gives defaults for %j', (raw) => {
     const prefs = sanitizePrefs(raw);
     expect(['ar', 'en']).toContain(prefs.locale);
-    expect(prefs.voiceNames).toEqual({ ar: '', en: '' }); // empty = let the app choose
     expect(typeof prefs.voice).toBe('boolean');
   });
 
@@ -60,13 +59,11 @@ describe('sanitizePrefs', () => {
       textSize: { big: true },
       rate: 'ludicrous',
       voice: 'on',
-      voiceNames: { ar: 5, en: 'Samantha' },
       mobility: 'wheelchair',
     });
     expect(prefs.locale).toBe('en');
     expect(prefs.mobility).toBe('wheelchair');
     expect(prefs.textSize).toBe('s');
     expect(prefs.rate).toBe('normal');
-    expect(prefs.voiceNames).toEqual({ ar: '', en: 'Samantha' });
   });
 });

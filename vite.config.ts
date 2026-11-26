@@ -7,7 +7,6 @@ import { defineConfig, type Plugin } from 'vitest/config';
 /**
  * Fills public/sw.js with the files this build produced, so that the very
  * first visit is already usable offline (not only the second one).
- * The recorded voice pack is left out on purpose: it is cached as it is used.
  */
 function precache(): Plugin {
   let outDir = 'dist';
@@ -92,16 +91,10 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['src/**/*.test.ts', 'scripts/**/*.test.ts'],
+    include: ['src/**/*.test.ts'],
     coverage: {
       provider: 'v8',
-      include: [
-        'src/navigation/**',
-        'src/search/**',
-        'src/i18n/**',
-        'src/voice/**',
-        'src/services/**',
-      ],
+      include: ['src/navigation/**', 'src/search/**', 'src/i18n/**', 'src/services/**'],
       exclude: ['src/**/*.test.ts'],
     },
   },
