@@ -5,7 +5,7 @@ import { GROUND_ROUTE, TWO_FLOOR_ROUTE, seed } from './helpers';
 // spill past the screen edge or hide behind another control.
 test.use({ viewport: { width: 320, height: 640 } });
 
-const PAGES = ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs'] as const;
+const PAGES = ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs', 'studio'] as const;
 
 for (const locale of ['en', 'ar'] as const) {
   for (const name of PAGES) {

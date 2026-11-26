@@ -43,7 +43,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       # Builds the app, serves it, and drives it like a phone: location and
-      # motion permissions, the demo walk, offline, accessibility.
+      # motion permissions, the demo walk, the voice studio, offline, accessibility.
       - run: npx playwright test
       - uses: actions/upload-artifact@v4
         if: failure()

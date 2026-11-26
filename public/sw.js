@@ -4,6 +4,8 @@
  *   so the first visit already works offline, not only the second.
  * - Pages are network-first (a fresh deploy wins), falling back to the cached page.
  * - Hashed build files are cache-first (their name changes when their content does).
+ * - The recorded voice pack is stale-while-revalidate: it plays at once from the
+ *   cache and quietly refreshes, so a re-recorded clip arrives on the next visit.
  */
 const BUILD = '__BUILD_ID__';
 const CACHE = `darbak-${BUILD}`;
@@ -57,6 +59,18 @@ self.addEventListener('fetch', (event) => {
       fetch(request)
         .then((response) => remember('./index.html', response))
         .catch(() => lookup('./index.html').then((hit) => hit || lookup('./'))),
+    );
+    return;
+  }
+
+  if (url.pathname.includes('/voice/')) {
+    event.respondWith(
+      lookup(request).then((cached) => {
+        const refresh = fetch(request).then((response) => remember(request, response));
+        if (!cached) return refresh;
+        refresh.catch(() => undefined); // offline: the cached clip is enough
+        return cached;
+      }),
     );
     return;
   }

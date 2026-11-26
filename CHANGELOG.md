@@ -1,17 +1,5 @@
 # Changelog
 
-## 1.1.1 — 2026-11-26
-
-The recorded-voice tooling was taken out again; everything else from 1.1.0 stays.
-
-**Removed**
-
-- The Voice Studio page and its link in Settings, the recorded voice-pack engine, `npm run voice:install`, and the device-voice picker. Spoken directions use the phone's own voice again: Saudi Arabic (`ar-SA`) first, then other Gulf voices, then any Arabic voice. No voice files were ever published.
-
-**Kept**
-
-- Follow my location, the demo walk, offline-first service worker, security headers, icons, accessibility fixes and the dev-tooling updates.
-
 ## 1.1.0 — 2026-11-26
 
 Live guidance, a recordable Saudi voice, and a technical hardening pass.

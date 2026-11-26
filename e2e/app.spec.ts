@@ -64,7 +64,7 @@ test.describe('the app shell', () => {
     const problems = watchErrors(page);
     const policy = await page.goto('/').then((r) => r?.text());
     expect(policy).toContain('Content-Security-Policy');
-    for (const name of ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs']) {
+    for (const name of ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs', 'studio']) {
       await page.goto(`/#${name}`);
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
     }

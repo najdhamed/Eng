@@ -16,7 +16,7 @@ async function violationsOn(page: Page): Promise<string[]> {
   );
 }
 
-const PAGES = ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs'] as const;
+const PAGES = ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs', 'studio'] as const;
 
 for (const locale of ['en', 'ar'] as const) {
   test.describe(`accessibility (${locale})`, () => {
@@ -25,6 +25,9 @@ for (const locale of ['en', 'ar'] as const) {
         await seed(context, { locale, journey: GROUND_ROUTE });
         await page.goto(`/#${name}`);
         await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+        if (name === 'studio') {
+          await expect(page.locator('.studio__loading')).toBeHidden({ timeout: 30_000 });
+        }
         expect(await violationsOn(page)).toEqual([]);
       });
     }

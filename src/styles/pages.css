@@ -1381,6 +1381,273 @@
   }
 }
 
+/* ---------- Settings: voice picker ---------- */
+.link-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border-radius: var(--r-md);
+  background: var(--surface-2);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.link-row__icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 40px;
+  block-size: 40px;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary-soft-ink);
+}
+
+.link-row__text {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-inline-size: 0;
+}
+
+.link-row__text span {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.voice-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.voice-list legend {
+  margin-block-end: 6px;
+  font-weight: 600;
+}
+
+.voice-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.voice-list__row {
+  display: flex;
+  flex: 1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  min-block-size: var(--tap);
+  min-inline-size: 0;
+}
+
+.voice-list__row input {
+  inline-size: 20px;
+  block-size: 20px;
+  accent-color: var(--primary);
+}
+
+.voice-list__name {
+  overflow-wrap: anywhere;
+}
+
+/* ---------- Voice studio ---------- */
+.studio {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.studio__intro p,
+.studio__now p {
+  margin: 0;
+}
+
+.studio__tip {
+  margin-block-start: 8px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.studio__loading {
+  color: var(--muted);
+  text-align: center;
+}
+
+.studio__bar {
+  block-size: 10px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.studio__bar span {
+  display: block;
+  block-size: 100%;
+  background: var(--ok);
+  transition: inline-size 0.3s ease;
+}
+
+.studio__count {
+  margin: 8px 0 0;
+  font-weight: 600;
+}
+
+.studio__count span {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.studio__now {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 2px solid var(--primary);
+}
+
+.studio__label {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.studio__phrase {
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.studio__spelled,
+.studio__example {
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+
+.studio__meter {
+  block-size: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-2);
+  overflow: hidden;
+}
+
+.studio__meter span {
+  display: block;
+  block-size: 100%;
+  background: var(--primary);
+  transition: inline-size 0.08s linear;
+}
+
+.studio__controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.studio__rec.is-on {
+  background: var(--danger);
+}
+
+.studio__status {
+  min-block-size: 1.5em;
+  font-weight: 600;
+}
+
+.studio__list details {
+  border-block-end: 1px solid var(--line);
+}
+
+.studio__list details:last-child {
+  border-block-end: 0;
+}
+
+.studio__list summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-block-size: var(--tap);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.studio__items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0 0 10px;
+  padding: 0;
+  list-style: none;
+}
+
+.studio__items li {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.studio__item {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 10px;
+  min-block-size: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.studio__item.is-current {
+  background: var(--primary-soft);
+}
+
+.studio__tick {
+  display: grid;
+  flex: none;
+  place-items: center;
+  inline-size: 22px;
+  block-size: 22px;
+  border: 2px solid var(--line);
+  border-radius: 50%;
+}
+
+.studio__tick.is-done {
+  border-color: var(--ok);
+  background: var(--ok);
+  color: var(--on-ok);
+}
+
+.studio__item-text {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.studio__share {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.studio .card {
+  padding: 16px;
+}
+
+.studio .page-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 /* ---------- Something went wrong ---------- */
 .crash {
   min-block-size: 100dvh;
