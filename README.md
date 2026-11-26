@@ -35,21 +35,21 @@ Large hospitals are hard to navigate: many floors, identical corridors and small
 
 > «امشِ سيدا 35 متر لين توصل المصاعد» → «اطلع بالمصعد للدور الثاني» → «لف يمين» → «لف يسار، وبتلقى عيادات الباطنية على يمينك» → «وصلت!»
 
-|     | الميزة                                                                               | Feature                                                                                                       |
-| --- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------- |
-| 🧭  | مسارات حقيقية بخوارزمية Dijkstra على مخطط الأدوار                                    | Real shortest-path routing (Dijkstra) over a floor graph                                                      |
-| 🗣️  | إرشاد صوتي باللهجة السعودية، يمين ويسار حسب اتجاهك الفعلي                            | Spoken turn-by-turn directions in Saudi Arabic, computed from the walker's real heading                       |
-| ♿  | مسار بدون درج للكرسي المتحرك وعربية الأطفال (مضمون بالاختبارات)                      | Step-free routes for wheelchairs and strollers, guaranteed by tests                                           |
-| 📍  | **تابع موقعي**: يطلب إذنك، ويتابع مشيك بالخطوات والـGPS، وينتقل للخطوة التالية لحاله | **Follow my location**: asks permission, follows your walk by steps and GPS, advances the step by itself      |
-| 🗺️  | خريطة تفاعلية لكل دور: تكبير، سحب، ونقطة «أنت هنا» تتحرك مع كل خطوة                  | Interactive floor maps with pan, pinch-zoom and a moving "you are here" dot                                   |
-| 🎙️  | استوديو صوت: سجّلوا العبارات بصوتكم وتنزل مع الموقع، بدل صوت الجهاز                  | A Voice Studio: record the phrases in your own voice and ship them with the site, instead of the device voice |
-| 📷  | **ضعت؟** صوّر رمز QR على أي لوحة، ويكمل الطريق من مكانك                              | **Lost?** Scan the QR code on any sign and the route restarts from where you stand                            |
-| 🎙️  | بحث بالصوت وبحث ذكي يفهم «صيدليه» و«حمام» و«اسعاف»                                   | Voice search and fuzzy Arabic search ("صيدليه", "حمام", "اسعاف")                                              |
-| 🚨  | زر طوارئ واحد، وأقرب دورة مياه ومصلى ومخرج من مكانك                                  | One-tap Emergency, and the nearest restroom, prayer room and exit                                             |
-| 🔤  | خط كبير، تباين عالي، وضع داكن، عربي وإنجليزي (RTL/LTR)                               | Large text, high contrast, dark mode, Arabic and English                                                      |
-| 🏷️  | صفحة للموظفين تطبع لوحات QR لكل قسم                                                  | A staff page that prints QR signs for every department                                                        |
-| 📴  | يشتغل بدون إنترنت بعد أول فتح، وبدون تطبيق                                           | Works offline after the first visit (PWA), no app install                                                     |
-| 🔒  | لا حسابات ولا تتبع: كل شي محفوظ في جهازك                                             | No accounts and no tracking: everything stays on the device                                                   |
+|     | الميزة                                                                               | Feature                                                                                                           |
+| --- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| 🧭  | مسارات حقيقية بخوارزمية Dijkstra على مخطط الأدوار                                    | Real shortest-path routing (Dijkstra) over a floor graph                                                          |
+| 🗣️  | إرشاد صوتي باللهجة السعودية، يمين ويسار حسب اتجاهك الفعلي                            | Spoken turn-by-turn directions in Saudi Arabic, computed from the walker's real heading                           |
+| ♿  | مسار بدون درج للكرسي المتحرك وعربية الأطفال (مضمون بالاختبارات)                      | Step-free routes for wheelchairs and strollers, guaranteed by tests                                               |
+| 📍  | **تابع موقعي**: يطلب إذنك، ويتابع مشيك بالخطوات والـGPS، وينتقل للخطوة التالية لحاله | **Follow my location**: asks permission, follows your walk by steps and GPS, advances the step by itself          |
+| 🗺️  | خريطة تفاعلية لكل دور: تكبير، سحب، ونقطة «أنت هنا» تتحرك مع كل خطوة                  | Interactive floor maps with pan, pinch-zoom and a moving "you are here" dot                                       |
+| 🎙️  | صوت سعودي واضح (Azure) يجي مع الموقع نفسه، بدل صوت الجوال                            | A clear Saudi studio voice (Azure neural), shipped with the site as static clips instead of the phone's own voice |
+| 📷  | **ضعت؟** صوّر رمز QR على أي لوحة، ويكمل الطريق من مكانك                              | **Lost?** Scan the QR code on any sign and the route restarts from where you stand                                |
+| 🎙️  | بحث بالصوت وبحث ذكي يفهم «صيدليه» و«حمام» و«اسعاف»                                   | Voice search and fuzzy Arabic search ("صيدليه", "حمام", "اسعاف")                                                  |
+| 🚨  | زر طوارئ واحد، وأقرب دورة مياه ومصلى ومخرج من مكانك                                  | One-tap Emergency, and the nearest restroom, prayer room and exit                                                 |
+| 🔤  | خط كبير، تباين عالي، وضع داكن، عربي وإنجليزي (RTL/LTR)                               | Large text, high contrast, dark mode, Arabic and English                                                          |
+| 🏷️  | صفحة للموظفين تطبع لوحات QR لكل قسم                                                  | A staff page that prints QR signs for every department                                                            |
+| 📴  | يشتغل بدون إنترنت بعد أول فتح، وبدون تطبيق                                           | Works offline after the first visit (PWA), no app install                                                         |
+| 🔒  | لا حسابات ولا تتبع: كل شي محفوظ في جهازك                                             | No accounts and no tracking: everything stays on the device                                                       |
 
 ---
 
@@ -65,20 +65,20 @@ Large hospitals are hard to navigate: many floors, identical corridors and small
 
 **Where to look in the code:**
 
-| What                                              | File                                                                                                                     |
-| ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
-| Floor graph and lift/stairs rules                 | [`src/navigation/graph.ts`](src/navigation/graph.ts)                                                                     |
-| Dijkstra with a binary heap                       | [`src/navigation/dijkstra.ts`](src/navigation/dijkstra.ts), [`minHeap.ts`](src/navigation/minHeap.ts)                    |
-| Turning a path into left / right / straight steps | [`src/navigation/directions.ts`](src/navigation/directions.ts)                                                           |
-| Saudi-Arabic wording and Arabic plurals           | [`src/i18n/ar.ts`](src/i18n/ar.ts), [`plural.ts`](src/i18n/plural.ts), [`directionsText.ts`](src/i18n/directionsText.ts) |
-| Arabic-aware search                               | [`src/search/searchPlaces.ts`](src/search/searchPlaces.ts)                                                               |
-| QR decoding (BarcodeDetector + jsQR fallback)     | [`src/services/qr.ts`](src/services/qr.ts)                                                                               |
-| The hospital data                                 | [`src/domain/hospital.ts`](src/domain/hospital.ts)                                                                       |
-| Live tracking: route-constrained walking, steps   | [`src/navigation/tracking.ts`](src/navigation/tracking.ts), [`src/services/live.ts`](src/services/live.ts)               |
-| Step counter and GPS odometer                     | [`src/services/motion.ts`](src/services/motion.ts), [`src/services/location.ts`](src/services/location.ts)               |
-| Recorded voice pack (phrases, engine, studio)     | [`src/voice/`](src/voice), [`src/pages/StudioPage.tsx`](src/pages/StudioPage.tsx)                                        |
-| Unit tests (220)                                  | `src/**/*.test.ts`, `scripts/*.test.ts`                                                                                  |
-| End-to-end tests (88, phone browser)              | [`e2e/`](e2e)                                                                                                            |
+| What                                                 | File                                                                                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| Floor graph and lift/stairs rules                    | [`src/navigation/graph.ts`](src/navigation/graph.ts)                                                                     |
+| Dijkstra with a binary heap                          | [`src/navigation/dijkstra.ts`](src/navigation/dijkstra.ts), [`minHeap.ts`](src/navigation/minHeap.ts)                    |
+| Turning a path into left / right / straight steps    | [`src/navigation/directions.ts`](src/navigation/directions.ts)                                                           |
+| Saudi-Arabic wording and Arabic plurals              | [`src/i18n/ar.ts`](src/i18n/ar.ts), [`plural.ts`](src/i18n/plural.ts), [`directionsText.ts`](src/i18n/directionsText.ts) |
+| Arabic-aware search                                  | [`src/search/searchPlaces.ts`](src/search/searchPlaces.ts)                                                               |
+| QR decoding (BarcodeDetector + jsQR fallback)        | [`src/services/qr.ts`](src/services/qr.ts)                                                                               |
+| The hospital data                                    | [`src/domain/hospital.ts`](src/domain/hospital.ts)                                                                       |
+| Live tracking: route-constrained walking, steps      | [`src/navigation/tracking.ts`](src/navigation/tracking.ts), [`src/services/live.ts`](src/services/live.ts)               |
+| Step counter and GPS odometer                        | [`src/services/motion.ts`](src/services/motion.ts), [`src/services/location.ts`](src/services/location.ts)               |
+| Studio voice (phrases, clip player, Azure generator) | [`src/voice/`](src/voice), [`scripts/voicePack.ts`](scripts/voicePack.ts)                                                |
+| Unit tests (225)                                     | `src/**/*.test.ts`, `scripts/*.test.ts`                                                                                  |
+| End-to-end tests (83, phone browser)                 | [`e2e/`](e2e)                                                                                                            |
 
 ---
 
@@ -93,31 +93,33 @@ npm install
 npm run dev          # http://localhost:5173
 ```
 
-| Command                          | What it does                                                                                                                                                                                                                                        |
-| -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `npm run dev`                    | Development server with hot reload                                                                                                                                                                                                                  |
-| `npm run build`                  | Typecheck, then a production build in `dist/`                                                                                                                                                                                                       |
-| `npm run preview`                | Serve the production build                                                                                                                                                                                                                          |
-| `npm test`                       | Unit tests (Vitest)                                                                                                                                                                                                                                 |
-| `npm run test:coverage`          | Tests with a coverage report                                                                                                                                                                                                                        |
-| `npm run test:e2e`               | Builds the app and drives it in a phone-sized Chromium (Playwright): location and motion permissions, the demo walk, the Voice Studio, offline, 320 px layouts, and axe WCAG scans in both languages. First time: `npx playwright install chromium` |
-| `npm run lint`                   | ESLint, including accessibility rules (jsx-a11y)                                                                                                                                                                                                    |
-| `npm run check`                  | Typecheck + lint + unit tests, the same gate CI runs                                                                                                                                                                                                |
-| `npm run voice:install -- <zip>` | Installs a voice pack saved from the Voice Studio into `public/voice/` (see below)                                                                                                                                                                  |
-| `npm run icons`                  | Re-renders the home-screen icons from `public/favicon.svg`                                                                                                                                                                                          |
+| Command                  | What it does                                                                                                                                                                                                                                             |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `npm run dev`            | Development server with hot reload                                                                                                                                                                                                                       |
+| `npm run build`          | Typecheck, then a production build in `dist/`                                                                                                                                                                                                            |
+| `npm run preview`        | Serve the production build                                                                                                                                                                                                                               |
+| `npm test`               | Unit tests (Vitest)                                                                                                                                                                                                                                      |
+| `npm run test:coverage`  | Tests with a coverage report                                                                                                                                                                                                                             |
+| `npm run test:e2e`       | Builds the app and drives it in a phone-sized Chromium (Playwright): location and motion permissions, the demo walk, the studio voice pack, offline, 320 px layouts, and axe WCAG scans in both languages. First time: `npx playwright install chromium` |
+| `npm run lint`           | ESLint, including accessibility rules (jsx-a11y)                                                                                                                                                                                                         |
+| `npm run check`          | Typecheck + lint + unit tests, the same gate CI runs                                                                                                                                                                                                     |
+| `npm run voice:generate` | Reads every phrase with an Azure Saudi neural voice into `public/voice/` (see below)                                                                                                                                                                     |
+| `npm run icons`          | Re-renders the home-screen icons from `public/favicon.svg`                                                                                                                                                                                               |
 
 To try voice search, the live camera and **Follow my location** on a phone, open the dev server over HTTPS or deploy it (browsers only allow the microphone, camera and location on secure origins). Without a phone, the consent sheet has a **Try a demo walk** button that follows a simulated walker along the route.
 
 ### The Saudi voice
 
-Phones ship standard Arabic voices, and none of them is Najdi. So Darbak can speak from **recordings**: the Voice Studio (Settings → Voice studio) lists every phrase the app can say (169 short clips in Arabic: phrases, numbers, floors and place names, recorded once and combined into sentences), records them with the phone's microphone, trims and levels them, and saves the pack as a ZIP.
+Phones ship standard Arabic voices, and none of them is Saudi enough for a hospital. So Darbak can speak from **clips read by a Saudi neural voice from Azure AI Speech** (`ar-SA-HamedNeural`, male, or `ar-SA-ZariyahNeural`, female). The clips are made **once**, ahead of time, and shipped with the site as small static files: no key in the browser, no cost per visitor, no connection needed after the first visit. Anything the clips cannot say in full falls back, sentence by sentence, to the phone's own voice (Saudi first), so nobody is left without guidance. A visitor can switch the studio voice off in Settings.
 
-```bash
-npm run voice:install -- ~/Downloads/darbak-voice-ar.zip
-git add public/voice && git commit -m "Najdi voice pack"
-```
+The whole Arabic pack is 169 phrases and about 2,100 characters, well under 1% of Azure's free 0.5 million characters a month.
 
-The script checks every clip, copies them to `public/voice/ar/` and prints how many routes the pack can already say in full. A sentence that needs a phrase that is not recorded falls back, as a whole, to the best Arabic voice on the device (Saudi voices are ranked first and the visitor can pick another in Settings), so a partial pack never leaves anyone without guidance. Visitors download the pack once and the service worker keeps it for offline use.
+1. In the [Azure portal](https://portal.azure.com) create a **Speech** resource (the free F0 tier is enough). Copy **Key 1** and the **Location/Region** from _Keys and Endpoint_.
+2. In this repository open _Settings → Secrets and variables → Actions_ and add two secrets: `AZURE_SPEECH_KEY` and `AZURE_SPEECH_REGION` (for example `saudiarabiaeast`).
+3. _Actions → Generate Saudi voice → Run workflow_ with **trial** ticked. It makes 12 clips and attaches a page with a play button for each (the `voice-test` artifact). Listen, and try the other voice or a slower speed if you like.
+4. Run it again with **trial** unticked. It opens a pull request that adds `public/voice/ar/`. Merging it ships the voice with the next deploy.
+
+The same thing from a terminal: `AZURE_SPEECH_KEY=… AZURE_SPEECH_REGION=… npm run voice:generate -- --voice ar-SA-ZariyahNeural` (`--dry-run` shows the cost, `--limit 12` makes a trial, `--force` reads everything again). An interrupted run picks up where it stopped.
 
 ### Deploying
 
@@ -149,11 +151,11 @@ src/
 ├── i18n/          Arabic + English messages, plurals, direction wording
 ├── search/        Arabic-normalising place search
 ├── services/      Speech, speech recognition, QR, storage, location, motion sensor, live tracker
-├── voice/         Recorded voice pack: phrase catalogue, clip store, WAV clean-up, ZIP, playback
+├── voice/         Studio voice: phrase catalogue, WAV clean-up, clip player
 ├── state/         Preferences, journey and toast contexts
 ├── hooks/         useSpeech, useVoiceSearch, useWakeLock
 ├── components/    Map, floor switcher, search field, dialogs, controls
-├── pages/         Home, Places, Route, Map, Lost, Settings, QR signs, Voice studio
+├── pages/         Home, Places, Route, Map, Lost, Settings, QR signs
 └── styles/        Design tokens (light / dark / high contrast) and CSS
 ```
 
@@ -164,7 +166,7 @@ The routing and wording layers are plain TypeScript with no browser or React dep
 - Load hospital data from JSON exported from CAD floor plans, so a new hospital needs no code change.
 - Bluetooth-beacon or Wi-Fi positioning, which would also replace the lift/stairs button with a real floor reading (web browsers have no barometer).
 - Appointment hand-off: open Darbak from an SMS reminder straight to the right clinic.
-- A cloud neural Saudi voice (for example Azure `ar-SA`) as an alternative to the recorded pack.
+- A Najdi-dialect voice: the Azure voices are Saudi-accented Modern Standard Arabic, so a recorded Najdi pack could still sit on top of them.
 - Kiosk mode for lobby screens.
 
 ## الفريق · Team

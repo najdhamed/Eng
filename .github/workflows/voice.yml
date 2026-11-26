@@ -1,0 +1,97 @@
+name: Generate Saudi voice
+
+# Run it by hand: Actions → Generate Saudi voice → Run workflow.
+#
+# It reads every phrase Darbak can say with a Saudi neural voice from Azure AI
+# Speech, so it needs two repository secrets (Settings → Secrets and variables
+# → Actions → New repository secret):
+#   AZURE_SPEECH_KEY     "Key 1" of an Azure AI Speech resource
+#   AZURE_SPEECH_REGION  that resource's region, for example saudiarabiaeast
+#
+# Start with the listening test (the default): it makes 12 clips and a page with
+# a play button for each, attached to the run as "voice-test". Untick "trial" to
+# make the whole pack; it opens a pull request that adds public/voice/ar.
+
+on:
+  workflow_dispatch:
+    inputs:
+      voice:
+        description: Voice (Hamed is male, Zariyah is female)
+        type: choice
+        default: ar-SA-HamedNeural
+        options:
+          - ar-SA-HamedNeural
+          - ar-SA-ZariyahNeural
+      rate:
+        description: Speed offset, for example -5% for a little slower (blank = the voice's own)
+        type: string
+        default: ''
+      trial:
+        description: Listening test only (12 clips, nothing is committed)
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: voice
+  cancel-in-progress: false
+
+jobs:
+  generate:
+    name: Read the phrases with Azure
+    runs-on: ubuntu-latest
+    env:
+      AZURE_SPEECH_KEY: ${{ secrets.AZURE_SPEECH_KEY }}
+      AZURE_SPEECH_REGION: ${{ secrets.AZURE_SPEECH_REGION }}
+      VOICE: ${{ inputs.voice }}
+      RATE: ${{ inputs.rate }}
+      TRIAL: ${{ inputs.trial }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - run: npm ci
+
+      - name: Check the secrets are set
+        run: |
+          if [ -z "$AZURE_SPEECH_KEY" ] || [ -z "$AZURE_SPEECH_REGION" ]; then
+            echo "::error::Add the secrets AZURE_SPEECH_KEY and AZURE_SPEECH_REGION (Settings → Secrets and variables → Actions)."
+            exit 1
+          fi
+
+      - name: Read the phrases
+        run: |
+          args=(--voice "$VOICE" --listen "$RUNNER_TEMP/voice-test")
+          if [ -n "$RATE" ]; then args+=(--rate "$RATE"); fi
+          if [ "$TRIAL" = "true" ]; then args+=(--limit 12); fi
+          npm run voice:generate -- "${args[@]}"
+
+      - name: Keep the clips to listen to
+        uses: actions/upload-artifact@v4
+        with:
+          name: voice-test
+          path: ${{ runner.temp }}/voice-test
+          if-no-files-found: error
+
+      - name: Open a pull request with the whole pack
+        if: ${{ inputs.trial == false }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event.repository.default_branch }}
+        run: |
+          branch="voice-pack/${GITHUB_RUN_ID}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -b "$branch"
+          git add public/voice
+          git commit -m "Saudi studio voice (${VOICE})"
+          git push origin "$branch"
+          gh pr create --base "$BASE" --head "$branch" \
+            --title "Saudi studio voice (${VOICE})" \
+            --body "Clips read with ${VOICE} by the Generate Saudi voice workflow. Merging ships them with the next deploy; Settings → Saudi studio voice switches them off for a visitor." \
+            || echo "Pushed branch $branch: open a pull request from it on GitHub."

@@ -6,8 +6,8 @@ import { usePrefs } from '../state/PrefsContext';
 
 /**
  * Speaks in the visitor's language and speed, and only when voice guidance is
- * on. A recorded voice pack (see the Voice Studio) is used for any sentence it
- * can say in full; everything else uses the device's own voice.
+ * on. The Saudi studio voice that ships with the site is used for any sentence
+ * it can say in full; everything else uses the device's own voice.
  */
 export function useSpeech() {
   const { prefs } = usePrefs();
@@ -21,17 +21,11 @@ export function useSpeech() {
 
   useEffect(() => {
     void voiceEngine.load(locale).then(() => {
-      // Keep the recorded clips for offline use, unless the person asked to save data.
+      // Keep the voice clips for offline use, unless the person asked to save data.
       const saveData = (navigator as { connection?: { saveData?: boolean } }).connection?.saveData;
       if (!saveData) void voiceEngine.warm(locale);
     });
   }, [locale]);
-
-  // The device voice the person picked for this language, if it is still installed.
-  const chosen = prefs.voiceNames[locale];
-  useEffect(() => {
-    speaker.select(locale, chosen || null);
-  }, [locale, chosen]);
 
   const speak = useCallback(
     (text: string, options: { force?: boolean } = {}) => {
@@ -43,7 +37,7 @@ export function useSpeech() {
 
   const cancel = useCallback(() => sayer.stop(), []);
 
-  // `pack.version` makes this recompute when clips are added or removed.
+  // `pack.version` makes this recompute once the clips have loaded.
   const packClips = useMemo(() => voiceEngine.size(locale), [locale, pack.version]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return {

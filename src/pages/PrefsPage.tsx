@@ -7,7 +7,7 @@ import { APP_VERSION } from '../config';
 import type { Locale, Mobility } from '../domain/types';
 import { useSpeech } from '../hooks/useSpeech';
 import { useI18n } from '../i18n/I18nContext';
-import { speaker, type SpeechRate } from '../services/speech';
+import type { SpeechRate } from '../services/speech';
 import { useJourney } from '../state/JourneyContext';
 import { usePrefs, type TextSize, type Theme } from '../state/PrefsContext';
 import { useToast } from '../state/ToastContext';
@@ -19,13 +19,6 @@ export function PrefsPage() {
   const toast = useToast();
   const speech = useSpeech();
   const [confirming, setConfirming] = useState(false);
-  // Re-reads when the device finishes loading its voices (the hook re-renders then).
-  const voices = speaker.list(tr.locale);
-  const chosen = prefs.voiceNames[tr.locale];
-  const chooseVoice = (name: string) => {
-    speech.cancel();
-    set({ voiceNames: { ...prefs.voiceNames, [tr.locale]: name } });
-  };
 
   return (
     <div className="page">
@@ -120,61 +113,6 @@ export function PrefsPage() {
           checked={prefs.voicePack}
           onChange={(voicePack) => set({ voicePack })}
         />
-        <a className="link-row" href="#studio">
-          <span className="link-row__icon">
-            <Icon name="mic" size={22} />
-          </span>
-          <span className="link-row__text">
-            <strong>{tr.t('prefs.studio')}</strong>
-            <span>{tr.t('prefs.studioSub')}</span>
-          </span>
-          <Icon name={tr.dir === 'rtl' ? 'chevronLeft' : 'chevronRight'} size={20} />
-        </a>
-        <fieldset className="voice-list">
-          <legend>{tr.t('prefs.voicePick')}</legend>
-          {voices.length === 0 ? (
-            <p className="settings__note">{tr.t('prefs.voiceNone')}</p>
-          ) : (
-            <>
-              <label className="voice-list__row">
-                <input
-                  type="radio"
-                  name="device-voice"
-                  checked={chosen === ''}
-                  onChange={() => chooseVoice('')}
-                />
-                <span className="voice-list__name">{tr.t('prefs.voiceAuto')}</span>
-              </label>
-              {voices.map((voice) => (
-                <div key={voice.name} className="voice-list__item">
-                  <label className="voice-list__row">
-                    <input
-                      type="radio"
-                      name="device-voice"
-                      checked={chosen === voice.name}
-                      onChange={() => chooseVoice(voice.name)}
-                    />
-                    <span className="voice-list__name">{voice.name}</span>
-                    {voice.saudi && (
-                      <span className="chip chip--ok">{tr.t('prefs.voiceSaudi')}</span>
-                    )}
-                    {voice.offline && <span className="chip">{tr.t('prefs.voiceOffline')}</span>}
-                  </label>
-                  <button
-                    type="button"
-                    className="btn btn--soft btn--sm"
-                    onClick={() =>
-                      speaker.preview(voice.name, tr.t('prefs.testPhrase'), prefs.rate)
-                    }
-                  >
-                    <Icon name="speaker" size={16} />
-                    {tr.t('prefs.voicePreview')}
-                  </button>
-                </div>
-              ))}
-            </>
-          )}
-        </fieldset>
         <div className="settings__row">
           <button
             type="button"

@@ -1,5 +1,27 @@
 # Changelog
 
+## 1.2.0 — 2026-11-26
+
+A Saudi studio voice, made by Azure AI Speech and shipped with the site.
+
+**New**
+
+- **Saudi studio voice.** `npm run voice:generate` (or the **Generate Saudi voice** GitHub workflow, which keeps the Azure key as a repository secret) reads the app's 169 phrases once with `ar-SA-HamedNeural` or `ar-SA-ZariyahNeural` and writes them to `public/voice/ar/`. The site plays them instead of the phone's voice whenever they can say a whole sentence, and falls back to the phone's voice (Saudi first) for anything else. The workflow starts with a 12-clip listening test.
+- A **Saudi studio voice** switch in Settings, with the number of clips that came with the site.
+
+**Changed**
+
+- The clip player only plays what the site ships; recording in the browser (Voice Studio), the device-voice picker and ZIP import were not brought back.
+
+**Under the hood**
+
+- Azure calls retry when busy or disconnected, never print the key, and stop at once when the key is refused; clips already made are kept, so an interrupted run can be run again.
+- 225 unit tests and 83 Playwright tests cover the generator (against a fake Azure), the player and the Settings switch.
+
+## 1.1.1 — 2026-11-26
+
+The recorded-voice tooling was taken out of 1.1.0 (Voice Studio, device-voice picker, ZIP installer); everything else stayed.
+
 ## 1.1.0 — 2026-11-26
 
 Live guidance, a recordable Saudi voice, and a technical hardening pass.

@@ -71,7 +71,6 @@ class Speaker {
   private snapshot: SpeechSnapshot;
   private readonly listeners = new Set<() => void>();
   private voices: SpeechSynthesisVoice[] = [];
-  private readonly chosen = new Map<Locale, string>();
 
   constructor() {
     const supported =
@@ -106,27 +105,12 @@ class Speaker {
 
   getSnapshot = (): SpeechSnapshot => this.snapshot;
 
-  /** The voices this device has for a language, best first. */
-  list(locale: Locale): RankedVoice[] {
-    return rankVoices(this.voices, locale);
-  }
-
-  /** Chooses a voice by name for a language (null goes back to the best one). */
-  select(locale: Locale, name: string | null): void {
-    if (name) this.chosen.set(locale, name);
-    else this.chosen.delete(locale);
-    this.update({});
-  }
-
   voiceFor(locale: Locale): SpeechSynthesisVoice | undefined {
-    const chosen = this.chosen.get(locale);
-    const byName = chosen ? this.voices.find((voice) => voice.name === chosen) : undefined;
-    if (byName) return byName;
     const best = rankVoices(this.voices, locale)[0];
     return best ? this.voices.find((voice) => voice.name === best.name) : undefined;
   }
 
-  /** True when the chosen voice is not the one we wanted (e.g. no Saudi voice installed). */
+  /** True when the voice in use is not the one we wanted (e.g. no Saudi voice installed). */
   isFallbackVoice(locale: Locale): boolean {
     const voice = this.voiceFor(locale);
     return !voice || !normalizeLang(voice.lang).startsWith(PREFERRED_LANG[locale][0]!);
@@ -142,26 +126,6 @@ class Speaker {
       utterance.rate = RATE[rate];
       const voice = this.voiceFor(locale);
       if (voice) utterance.voice = voice;
-      utterance.onstart = () => this.update({ speaking: true });
-      utterance.onend = () => this.update({ speaking: false });
-      utterance.onerror = () => this.update({ speaking: false });
-      synth.speak(utterance);
-    } catch {
-      this.update({ speaking: false });
-    }
-  }
-
-  /** Says `text` once with a particular voice, without making it the chosen one. */
-  preview(name: string, text: string, rate: SpeechRate = 'normal'): void {
-    const voice = this.voices.find((candidate) => candidate.name === name);
-    if (!voice || !this.snapshot.supported) return;
-    try {
-      const synth = window.speechSynthesis;
-      synth.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = voice.lang;
-      utterance.rate = RATE[rate];
-      utterance.voice = voice;
       utterance.onstart = () => this.update({ speaking: true });
       utterance.onend = () => this.update({ speaking: false });
       utterance.onerror = () => this.update({ speaking: false });

@@ -1,135 +1,287 @@
-import { mkdir, readdir, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Locale } from '../src/domain/types';
-import { buildCatalogue, coverage } from '../src/voice/catalogue';
-import { atomId, normalizeSpeech } from '../src/voice/text';
-import { CLIP_RATE, decodeWav } from '../src/voice/wav';
-import { readZip } from '../src/voice/zip';
+import { buildCatalogue, coverage, type Atom } from '../src/voice/catalogue';
+import { atomId } from '../src/voice/text';
+import { decodeWav, processRecording } from '../src/voice/wav';
 
-export interface InstallReport {
+/**
+ * Makes the voice the site ships: every phrase the app can say (the catalogue)
+ * is read once by a neural voice from Azure AI Speech, cleaned up so the clips
+ * stitch together, and written to public/voice/<locale>/ with a manifest. It
+ * runs on a developer's machine or in a GitHub workflow, never in the browser,
+ * so the key stays secret and visitors only download static files.
+ */
+
+export interface AzureConfig {
+  readonly key: string;
+  readonly region: string;
+  /** For example ar-SA-HamedNeural (male) or ar-SA-ZariyahNeural (female). */
+  readonly voice: string;
+  /** Speaking-rate offset such as "-5%" (slower) or "+5%"; omit for the voice's own pace. */
+  readonly rate?: string;
+}
+
+export const DEFAULT_VOICE: Record<Locale, string> = {
+  ar: 'ar-SA-HamedNeural',
+  en: 'en-GB-SoniaNeural',
+};
+
+const VOICE_NAME = /^[a-z]{2,3}-[A-Z]{2}-[A-Za-z0-9]+$/;
+const RATE = /^[+-]?\d{1,2}%$/;
+const REGION = /^[a-z0-9]{3,30}$/;
+
+const escapeXml = (text: string) =>
+  text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+
+export function assertConfig(config: AzureConfig): void {
+  if (!config.key) throw new Error('AZURE_SPEECH_KEY is empty');
+  if (!REGION.test(config.region))
+    throw new Error(`"${config.region}" does not look like an Azure region (e.g. saudiarabiaeast)`);
+  if (!VOICE_NAME.test(config.voice))
+    throw new Error(`"${config.voice}" is not a voice name (e.g. ar-SA-HamedNeural)`);
+  if (config.rate !== undefined && !RATE.test(config.rate))
+    throw new Error(`"${config.rate}" is not a rate such as -5% or +5%`);
+}
+
+/** The SSML for one phrase: the voice's own language is taken from its name. */
+export function buildSsml(text: string, config: Pick<AzureConfig, 'voice' | 'rate'>): string {
+  if (!VOICE_NAME.test(config.voice)) throw new Error(`"${config.voice}" is not a voice name`);
+  if (config.rate !== undefined && !RATE.test(config.rate))
+    throw new Error(`"${config.rate}" is not a rate such as -5% or +5%`);
+  const lang = config.voice.split('-').slice(0, 2).join('-');
+  const body = escapeXml(text);
+  const spoken = config.rate ? `<prosody rate="${config.rate}">${body}</prosody>` : body;
+  return (
+    `<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="${lang}">` +
+    `<voice name="${config.voice}">${spoken}</voice></speak>`
+  );
+}
+
+type Fetch = (url: string, init: RequestInit) => Promise<Response>;
+
+export interface SynthOptions {
+  readonly fetchImpl?: Fetch;
+  readonly sleep?: (ms: number) => Promise<void>;
+  readonly retries?: number;
+}
+
+const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
+/** One phrase to a 16 kHz mono WAV. Busy signals are retried; a refused key is explained. */
+export async function synthesize(
+  text: string,
+  config: AzureConfig,
+  { fetchImpl = fetch, sleep = wait, retries = 4 }: SynthOptions = {},
+): Promise<Uint8Array> {
+  assertConfig(config);
+  const url = `https://${config.region}.tts.speech.microsoft.com/cognitiveservices/v1`;
+  const init: RequestInit = {
+    method: 'POST',
+    headers: {
+      'Ocp-Apim-Subscription-Key': config.key,
+      'Content-Type': 'application/ssml+xml',
+      'X-Microsoft-OutputFormat': 'riff-16khz-16bit-mono-pcm',
+      'User-Agent': 'darbak-voice-generator',
+    },
+    body: buildSsml(text, config),
+  };
+  for (let attempt = 0; ; attempt += 1) {
+    let response: Response;
+    try {
+      response = await fetchImpl(url, init);
+    } catch (error) {
+      // A dropped connection is retried like a busy signal.
+      if (attempt >= retries) throw new Error(`Could not reach Azure: ${String(error)}`);
+      await sleep(500 * 2 ** attempt);
+      continue;
+    }
+    if (response.ok) return new Uint8Array(await response.arrayBuffer());
+    if (response.status === 401 || response.status === 403) {
+      throw new Error(
+        `Azure refused the key (HTTP ${response.status}). Check AZURE_SPEECH_KEY and that AZURE_SPEECH_REGION is the region of that Speech resource.`,
+      );
+    }
+    const retryable = response.status === 429 || response.status >= 500;
+    if (!retryable || attempt >= retries) {
+      throw new Error(`Azure answered HTTP ${response.status} for "${text}"`);
+    }
+    const asked = Number(response.headers.get('retry-after'));
+    await sleep(asked > 0 ? asked * 1000 : 500 * 2 ** attempt);
+  }
+}
+
+export interface GenerateOptions {
   readonly locale: Locale;
-  readonly installed: number;
-  readonly rejected: readonly string[];
+  readonly publicDir: string;
+  readonly config: AzureConfig;
+  /** Only the first N phrases: a cheap listening test. */
+  readonly limit?: number;
+  /** Read every phrase again even if its clip is already there. */
+  readonly force?: boolean;
+  readonly concurrency?: number;
+  readonly synth?: SynthOptions;
+  readonly log?: (line: string) => void;
+}
+
+export interface GenerateReport {
+  readonly locale: Locale;
+  readonly voice: string;
+  readonly generated: number;
+  readonly reused: number;
+  readonly failed: readonly string[];
+  /** Characters of text sent to Azure (what the free allowance is counted in). */
+  readonly characters: number;
+  readonly bytes: number;
   readonly atomsDone: number;
   readonly atomsTotal: number;
   readonly routesFull: number;
   readonly routesTotal: number;
-  /** The first few phrases still to record. */
-  readonly missing: readonly string[];
-  readonly bytes: number;
 }
 
-interface Manifest {
+interface ManifestFile {
   version?: number;
-  locale?: string;
+  voice?: string;
   clips?: { key?: string; text?: string; file?: string; ms?: number }[];
 }
 
-const isLocale = (value: unknown): value is Locale => value === 'ar' || value === 'en';
+interface Clip {
+  readonly key: string;
+  readonly text: string;
+  readonly file: string;
+  readonly ms: number;
+}
 
-/**
- * Checks a pack exported from the Voice Studio and installs it as the pack the
- * site ships (public/voice/<locale>/). Nothing is written if the pack is not
- * usable. Clips that fail a check are left out and listed in the report.
- */
-export async function installPack(zip: Uint8Array, publicDir: string): Promise<InstallReport> {
-  const files = await readZip(zip);
-  const byName = new Map(files.map((file) => [file.name.replace(/^.*\//, ''), file.data]));
-  const manifestBytes = byName.get('manifest.json');
-  if (!manifestBytes)
-    throw new Error(
-      'This zip has no manifest.json. Use the file saved by the Voice Studio as it is.',
-    );
-
-  let manifest: Manifest;
+async function readManifest(folder: string): Promise<ManifestFile | null> {
   try {
-    manifest = JSON.parse(new TextDecoder().decode(manifestBytes)) as Manifest;
+    return JSON.parse(await readFile(join(folder, 'manifest.json'), 'utf8')) as ManifestFile;
   } catch {
-    throw new Error('manifest.json is not valid JSON');
+    return null;
   }
-  if (manifest.version !== 1 || !Array.isArray(manifest.clips)) {
-    throw new Error('Unknown voice pack format (expected version 1)');
-  }
-  if (!isLocale(manifest.locale))
-    throw new Error('The pack does not say whether it is Arabic or English');
-  const locale = manifest.locale;
+}
 
-  const accepted: { key: string; text: string; file: string; ms: number; wav: Uint8Array }[] = [];
-  const rejected: string[] = [];
-  const seen = new Set<string>();
-  for (const clip of manifest.clips) {
-    const label = clip.text ?? clip.key ?? '(unnamed clip)';
-    if (
-      typeof clip.key !== 'string' ||
-      typeof clip.text !== 'string' ||
-      typeof clip.file !== 'string'
-    ) {
-      rejected.push(`${label}: incomplete entry`);
-      continue;
-    }
-    if (normalizeSpeech(clip.text) !== clip.key) {
-      rejected.push(`${label}: its text and key disagree`);
-      continue;
-    }
-    if (seen.has(clip.key)) {
-      rejected.push(`${label}: recorded twice`);
-      continue;
-    }
-    const wav = byName.get(clip.file.replace(/^.*\//, ''));
-    if (!wav) {
-      rejected.push(`${label}: the audio file ${clip.file} is missing`);
-      continue;
-    }
-    try {
-      const { samples, rate } = decodeWav(wav);
-      if (rate !== CLIP_RATE) throw new Error(`sample rate is ${rate}, not ${CLIP_RATE}`);
-      if (samples.length < CLIP_RATE * 0.05) throw new Error('shorter than 50 ms');
-      if (samples.length > CLIP_RATE * 8) throw new Error('longer than 8 s');
-    } catch (error) {
-      rejected.push(`${label}: ${error instanceof Error ? error.message : 'unreadable audio'}`);
-      continue;
-    }
-    seen.add(clip.key);
-    accepted.push({
-      key: clip.key,
-      text: clip.text,
-      file: `${atomId(clip.key)}.wav`,
-      ms: Math.round(((wav.length - 44) / 2 / CLIP_RATE) * 1000),
-      wav,
-    });
-  }
-  if (accepted.length === 0) throw new Error('No usable clips in this pack');
+/** What reading the whole catalogue would cost, without calling Azure. */
+export function estimate(locale: Locale, limit?: number) {
+  const atoms = buildCatalogue(locale).atoms.slice(0, limit);
+  return {
+    clips: atoms.length,
+    characters: atoms.reduce((sum, atom) => sum + atom.text.length, 0),
+  };
+}
 
-  const target = join(publicDir, 'voice', locale);
-  await mkdir(target, { recursive: true });
-  for (const name of await readdir(target)) {
-    if (name.endsWith('.wav') || name === 'manifest.json') await rm(join(target, name));
-  }
-  for (const clip of accepted) await writeFile(join(target, clip.file), clip.wav);
-  await writeFile(
-    join(target, 'manifest.json'),
-    `${JSON.stringify(
-      {
-        version: 1,
-        locale,
-        clips: accepted.map(({ key, text, file, ms }) => ({ key, text, file, ms })),
-      },
-      null,
-      1,
-    )}\n`,
-  );
-
+export async function generatePack(options: GenerateOptions): Promise<GenerateReport> {
+  const { locale, publicDir, config, limit, force = false, log = () => undefined } = options;
+  assertConfig(config);
   const catalogue = buildCatalogue(locale);
-  const stats = coverage(catalogue, seen);
+  const atoms: readonly Atom[] = limit ? catalogue.atoms.slice(0, limit) : catalogue.atoms;
+  const folder = join(publicDir, 'voice', locale);
+  await mkdir(folder, { recursive: true });
+
+  // Clips already made by this same voice are kept, so a failed run can simply be run again.
+  const previous = force ? null : await readManifest(folder);
+  const reusable = new Map<string, Clip>();
+  if (previous?.version === 1 && previous.voice === config.voice && previous.clips) {
+    for (const clip of previous.clips) {
+      if (!clip.key || !clip.text || !clip.file || typeof clip.ms !== 'number') continue;
+      try {
+        await readFile(join(folder, clip.file));
+        reusable.set(clip.key, { key: clip.key, text: clip.text, file: clip.file, ms: clip.ms });
+      } catch {
+        // The file is gone: make it again.
+      }
+    }
+  }
+
+  const made = new Map<string, Clip>();
+  const failed: string[] = [];
+  let characters = 0;
+  let bytes = 0;
+  const queue = atoms.filter((atom) => !reusable.has(atom.key));
+  let finished = 0;
+
+  const worker = async () => {
+    for (let atom = queue.shift(); atom; atom = queue.shift()) {
+      try {
+        const raw = await synthesize(atom.text, config, options.synth);
+        characters += atom.text.length;
+        const { samples, rate } = decodeWav(raw);
+        const clip = processRecording(samples, rate);
+        if (clip.silent) throw new Error('the audio is silent');
+        const file = `${atomId(atom.key)}.wav`;
+        await writeFile(join(folder, file), clip.wav);
+        bytes += clip.wav.length;
+        made.set(atom.key, { key: atom.key, text: atom.text, file, ms: clip.ms });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // A refused key will fail every phrase the same way: stop at once.
+        if (message.startsWith('Azure refused')) throw error;
+        failed.push(`${atom.text}: ${message}`);
+      }
+      finished += 1;
+      if (finished % 20 === 0 || queue.length === 0)
+        log(`  ${finished} of ${finished + queue.length}`);
+    }
+  };
+  const total = queue.length;
+  log(`Reading ${total} phrases with ${config.voice} (${atoms.length - total} already done)…`);
+  await Promise.all(Array.from({ length: Math.max(1, options.concurrency ?? 4) }, worker));
+
+  const clips: Clip[] = [];
+  for (const atom of atoms) {
+    const clip = made.get(atom.key) ?? reusable.get(atom.key);
+    if (clip) clips.push(clip);
+  }
+  if (clips.length === 0) throw new Error(`No clip could be made. ${failed[0] ?? ''}`.trim());
+
+  await writeFile(
+    join(folder, 'manifest.json'),
+    `${JSON.stringify({ version: 1, locale, voice: config.voice, clips }, null, 1)}\n`,
+  );
+  // Clips of an older run that the manifest no longer lists are removed.
+  const keep = new Set(clips.map((clip) => clip.file));
+  for (const name of await readdir(folder)) {
+    if (name.endsWith('.wav') && !keep.has(name)) await rm(join(folder, name));
+  }
+
+  const stats = coverage(catalogue, new Set(clips.map((clip) => clip.key)));
   return {
     locale,
-    installed: accepted.length,
-    rejected,
+    voice: config.voice,
+    generated: made.size,
+    reused: reusable.size,
+    failed,
+    characters,
+    bytes,
     ...stats,
-    missing: catalogue.atoms
-      .filter((atom) => !seen.has(atom.key))
-      .slice(0, 12)
-      .map((atom) => atom.text),
-    bytes: accepted.reduce((sum, clip) => sum + clip.wav.length, 0),
   };
+}
+
+/** A page with a play button per clip, for listening to a trial run before it is shipped. */
+export function listenPage(
+  clips: readonly { text: string; file: string }[],
+  voice: string,
+  dir: 'rtl' | 'ltr',
+): string {
+  const rows = clips
+    .map(
+      (clip) =>
+        `<li><audio controls preload="none" src="${escapeXml(clip.file)}"></audio><span>${escapeXml(clip.text)}</span></li>`,
+    )
+    .join('\n');
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Darbak voice test</title>
+<style>body{font:18px system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px}
+li{display:flex;gap:14px;align-items:center;margin:12px 0}span{font-size:1.3em}audio{flex:none;max-width:55%}
+ol{padding:0;list-style:none}</style></head>
+<body><h1>Darbak voice test: ${escapeXml(voice)}</h1>
+<ol dir="${dir}">
+${rows}
+</ol></body></html>
+`;
 }

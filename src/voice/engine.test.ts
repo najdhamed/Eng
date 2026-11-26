@@ -1,21 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { Locale } from '../domain/types';
 import { VoiceEngine, type AudioPort, type EngineDeps, type Playback } from './engine';
-import { MemoryClipStore } from './store';
 import { atomId, normalizeSpeech } from './text';
-import { readZip } from './zip';
 
 const bytes = (text: string) => new TextEncoder().encode(text);
-const clip = (text: string, wav = bytes(`wav:${text}`)) => ({
-  key: normalizeSpeech(text),
-  text,
-  wav,
-  ms: 500,
-});
-
 interface Harness {
   engine: VoiceEngine;
-  store: MemoryClipStore;
   fetched: string[];
   played: { buffers: unknown[]; rate: number }[];
   stopped: number[];
@@ -24,7 +14,6 @@ interface Harness {
 }
 
 function harness(shipped: { key: string; text: string }[] = []): Harness {
-  const store = new MemoryClipStore();
   const fetched: string[] = [];
   const played: Harness['played'] = [];
   const stopped: number[] = [];
@@ -45,7 +34,6 @@ function harness(shipped: { key: string; text: string }[] = []): Harness {
     },
   };
   const deps: EngineDeps = {
-    store,
     audio,
     fetchBytes: async (url) => {
       fetched.push(url);
@@ -67,7 +55,6 @@ function harness(shipped: { key: string; text: string }[] = []): Harness {
   };
   return {
     engine: new VoiceEngine(deps),
-    store,
     fetched,
     played,
     stopped,
@@ -89,23 +76,30 @@ describe('VoiceEngine: loading', () => {
     expect(h.played).toHaveLength(0);
   });
 
-  it('loads the shipped pack and the clips recorded on this device, device first', async () => {
+  it('loads the shipped pack', async () => {
     const h = harness(shippedFor('امش سيدا', 'مسافة'));
-    await h.store.put('ar', clip('امش سيدا', bytes('mine')));
-    await h.store.put('ar', clip('لف يمين'));
     await h.engine.load('ar');
-    expect(h.engine.size('ar')).toBe(3);
-    expect(h.engine.entries('ar').get(normalizeSpeech('امش سيدا'))?.origin).toBe('device');
-    expect(h.engine.entries('ar').get(normalizeSpeech('مسافة'))?.origin).toBe('shipped');
+    expect(h.engine.size('ar')).toBe(2);
+    expect(h.engine.has('ar', normalizeSpeech('مسافة'))).toBe(true);
+  });
+
+  it('ignores a manifest it does not understand', async () => {
+    const engine = new VoiceEngine({
+      audio: { decode: async () => null, play: async () => ({ stop: () => undefined }) },
+      fetchBytes: async () => bytes('x'),
+      fetchJson: async () => ({ version: 2, clips: 'nope' }),
+      packUrl: (locale: Locale, file: string) => `/voice/${locale}/${file}`,
+    });
+    await engine.load('ar');
+    expect(engine.size('ar')).toBe(0);
+    expect(engine.loaded('ar')).toBe(true);
   });
 
   it('keeps the two languages apart', async () => {
-    const h = harness();
-    await h.store.put('en', clip('turn left'));
+    const h = harness(shippedFor('turn left'));
     await h.engine.load('ar');
-    await h.engine.load('en');
-    expect(h.engine.size('ar')).toBe(0);
-    expect(h.engine.size('en')).toBe(1);
+    expect(h.engine.size('ar')).toBe(1);
+    expect(h.engine.size('en')).toBe(0);
   });
 
   it('loads only once, however often it is asked', async () => {
@@ -116,9 +110,8 @@ describe('VoiceEngine: loading', () => {
 });
 
 describe('VoiceEngine: warming the offline cache', () => {
-  it('downloads every shipped clip once, and none of the clips recorded on this device', async () => {
+  it('downloads every shipped clip once', async () => {
     const h = harness(shippedFor('امش سيدا', 'مسافة', 'متر'));
-    await h.store.put('ar', clip('لف يمين'));
     expect(await h.engine.warm('ar')).toBe(3);
     expect(h.fetched).toHaveLength(3);
     expect(h.fetched.every((url) => url.startsWith('/voice/ar/'))).toBe(true);
@@ -134,7 +127,6 @@ describe('VoiceEngine: warming the offline cache', () => {
     const texts = ['امش سيدا', 'مسافة', 'متر', 'لف يمين'];
     let calls = 0;
     const engine = new VoiceEngine({
-      store: new MemoryClipStore(),
       audio: { decode: async () => null, play: async () => ({ stop: () => undefined }) },
       fetchBytes: async () => {
         calls += 1;
@@ -160,21 +152,19 @@ describe('VoiceEngine: warming the offline cache', () => {
 
 describe('VoiceEngine: speaking', () => {
   it('plays the clips of a covered sentence in order', async () => {
-    const h = harness();
-    for (const text of ['امش سيدا', 'مسافة', '35 متر']) await h.store.put('ar', clip(text));
+    const h = harness(shippedFor('امش سيدا', 'مسافة', '35 متر'));
     await h.engine.load('ar');
     expect(h.engine.canSpeak('امشِ سيدا. مسافة 35 متر.', 'ar')).toBe(true);
     expect(await h.engine.speak('امشِ سيدا. مسافة 35 متر.', 'ar')).toBe(true);
     expect(h.played).toHaveLength(1);
-    expect(h.played[0]!.buffers).toEqual(['wav:امش سيدا', 'wav:مسافة', 'wav:35 متر']);
+    expect(h.played[0]!.buffers).toEqual(['shipped:امش سيدا', 'shipped:مسافة', 'shipped:35 متر']);
     expect(h.engine.getSnapshot().speaking).toBe(true);
     h.finish();
     expect(h.engine.getSnapshot().speaking).toBe(false);
   });
 
   it('falls back (returns false) when one word is missing, and plays nothing', async () => {
-    const h = harness();
-    await h.store.put('ar', clip('امش سيدا'));
+    const h = harness(shippedFor('امش سيدا'));
     await h.engine.load('ar');
     expect(h.engine.canSpeak('امش سيدا. مسافة 35 متر.', 'ar')).toBe(false);
     expect(await h.engine.speak('امش سيدا. مسافة 35 متر.', 'ar')).toBe(false);
@@ -183,8 +173,7 @@ describe('VoiceEngine: speaking', () => {
   });
 
   it('maps the speech speed onto the clips', async () => {
-    const h = harness();
-    await h.store.put('ar', clip('مسافة'));
+    const h = harness(shippedFor('مسافة'));
     await h.engine.load('ar');
     await h.engine.speak('مسافة', 'ar', 'slow');
     await h.engine.speak('مسافة', 'ar', 'fast');
@@ -202,8 +191,7 @@ describe('VoiceEngine: speaking', () => {
   });
 
   it('falls back when a clip cannot be fetched or decoded, and can try again later', async () => {
-    const h = harness();
-    await h.store.put('ar', clip('مسافة'));
+    const h = harness(shippedFor('مسافة'));
     await h.engine.load('ar');
     h.failDecode(true);
     expect(await h.engine.speak('مسافة', 'ar')).toBe(false);
@@ -213,99 +201,21 @@ describe('VoiceEngine: speaking', () => {
   });
 
   it('lets a newer sentence take over from an older one', async () => {
-    const h = harness();
-    await h.store.put('ar', clip('مسافة'));
-    await h.store.put('ar', clip('المصاعد'));
+    const h = harness(shippedFor('مسافة', 'المصاعد'));
     await h.engine.load('ar');
     await h.engine.speak('مسافة', 'ar');
     await h.engine.speak('المصاعد', 'ar');
     expect(h.stopped).toEqual([1]);
-    expect(h.played[1]!.buffers).toEqual(['wav:المصاعد']);
+    expect(h.played[1]!.buffers).toEqual(['shipped:المصاعد']);
   });
 
   it('stops when cancelled', async () => {
-    const h = harness();
-    await h.store.put('ar', clip('مسافة'));
+    const h = harness(shippedFor('مسافة'));
     await h.engine.load('ar');
     await h.engine.speak('مسافة', 'ar');
     h.engine.cancel();
     expect(h.stopped).toEqual([1]);
     expect(h.engine.getSnapshot().speaking).toBe(false);
-  });
-});
-
-describe('VoiceEngine: recording and sharing', () => {
-  it('adds and removes clips, and tells subscribers', async () => {
-    const h = harness();
-    await h.engine.load('ar');
-    let notified = 0;
-    h.engine.subscribe(() => (notified += 1));
-    await h.engine.save('ar', clip('مسافة'));
-    expect(h.engine.canSpeak('مسافة', 'ar')).toBe(true);
-    expect(await h.store.list('ar')).toHaveLength(1);
-    await h.engine.remove('ar', normalizeSpeech('مسافة'));
-    expect(h.engine.canSpeak('مسافة', 'ar')).toBe(false);
-    expect(await h.store.list('ar')).toHaveLength(0);
-    expect(notified).toBeGreaterThanOrEqual(2);
-  });
-
-  it('forgets this device’s clips but keeps the shipped ones', async () => {
-    const h = harness(shippedFor('مسافة'));
-    await h.engine.load('ar');
-    await h.engine.save('ar', clip('المصاعد'));
-    expect(h.engine.size('ar')).toBe(2);
-    await h.engine.clearDevice('ar');
-    expect(h.engine.size('ar')).toBe(1);
-    expect(h.engine.has('ar', normalizeSpeech('مسافة'))).toBe(true);
-  });
-
-  it('exports a zip with a manifest and a WAV per clip, and imports it on another device', async () => {
-    const a = harness(shippedFor('مسافة'));
-    await a.engine.load('ar');
-    await a.engine.save('ar', clip('المصاعد'));
-    const zip = await a.engine.exportZip('ar');
-
-    const files = await readZip(zip);
-    expect(files.map((f) => f.name).sort()).toEqual(
-      [
-        'manifest.json',
-        `${atomId(normalizeSpeech('مسافة'))}.wav`,
-        `${atomId(normalizeSpeech('المصاعد'))}.wav`,
-      ].sort(),
-    );
-
-    const b = harness();
-    await b.engine.load('ar');
-    expect(await b.engine.importZip('ar', zip)).toBe(2);
-    expect(b.engine.canSpeak('مسافة المصاعد', 'ar')).toBe(true);
-    expect(await b.store.list('ar')).toHaveLength(2);
-  });
-
-  it('refuses a pack for the other language, a zip without a manifest, and garbage', async () => {
-    const a = harness();
-    await a.engine.load('en');
-    await a.engine.save('en', clip('turn left'));
-    const english = await a.engine.exportZip('en');
-    const b = harness();
-    await expect(b.engine.importZip('ar', english)).rejects.toThrow('not ar');
-    await expect(b.engine.importZip('ar', bytes('nonsense'))).rejects.toThrow();
-  });
-
-  it('skips clips whose text does not match their key (a damaged pack)', async () => {
-    const a = harness();
-    await a.engine.load('ar');
-    await a.engine.save('ar', { key: 'something else', text: 'مسافة', wav: bytes('x'), ms: 1 });
-    const zip = await a.engine.exportZip('ar');
-    const b = harness();
-    expect(await b.engine.importZip('ar', zip)).toBe(0);
-  });
-
-  it('plays one clip back for the Studio', async () => {
-    const h = harness();
-    await h.engine.load('ar');
-    await h.engine.save('ar', clip('مسافة'));
-    await h.engine.preview('ar', normalizeSpeech('مسافة'));
-    expect(h.played.at(-1)!.buffers).toEqual(['wav:مسافة']);
   });
 });
 
@@ -321,7 +231,6 @@ describe('VoiceEngine: knowing when the pack is ready', () => {
   it('stops waiting after the time limit when the pack is slow, without giving up on it', async () => {
     let release: () => void = () => undefined;
     const slow = new VoiceEngine({
-      store: new MemoryClipStore(),
       audio: { decode: async () => null, play: async () => ({ stop: () => undefined }) },
       fetchBytes: async () => bytes('x'),
       fetchJson: () =>

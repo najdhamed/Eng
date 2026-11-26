@@ -84,7 +84,19 @@ function recordingTranslator(locale: Locale, found: Map<string, Found>): Transla
   };
 }
 
+const built = new Map<Locale, Catalogue>();
+
+/** The catalogue is derived from every route, which takes a moment: it is built once per language. */
 export function buildCatalogue(locale: Locale): Catalogue {
+  let catalogue = built.get(locale);
+  if (!catalogue) {
+    catalogue = buildCatalogueNow(locale);
+    built.set(locale, catalogue);
+  }
+  return catalogue;
+}
+
+function buildCatalogueNow(locale: Locale): Catalogue {
   const found = new Map<string, Found>();
   const sentences: { text: string; route: number }[] = [];
   for (const spoken of speakables(recordingTranslator(locale, found))) sentences.push(spoken);

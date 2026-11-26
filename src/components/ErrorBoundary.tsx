@@ -27,8 +27,8 @@ export const crashCopy = (language: string | null | undefined) =>
 
 /**
  * Forgets what Darbak saved on this device (settings and the current journey),
- * which is the one thing that can make a crash repeat. The voice recordings in
- * IndexedDB are left alone: they took people a long time to make.
+ * which is the one thing that can make a crash repeat. Only keys that start
+ * with `darbak:` are removed; nothing else on the site's storage is touched.
  */
 export function clearSavedSettings(storage: Pick<Storage, 'length' | 'key' | 'removeItem'>): void {
   const keys: string[] = [];

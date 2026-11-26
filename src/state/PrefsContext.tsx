@@ -19,10 +19,8 @@ export interface Prefs {
   readonly locale: Locale;
   readonly mobility: Mobility;
   readonly voice: boolean;
-  /** Use the recorded voice pack when it can say the sentence. */
+  /** Use the studio voice shipped with the site when it can say the sentence. */
   readonly voicePack: boolean;
-  /** The device voice chosen for each language ('' = the best one). */
-  readonly voiceNames: Readonly<Record<Locale, string>>;
   readonly rate: SpeechRate;
   readonly textSize: TextSize;
   readonly theme: Theme;
@@ -35,7 +33,6 @@ export const DEFAULT_PREFS: Prefs = {
   mobility: 'walk',
   voice: true,
   voicePack: true,
-  voiceNames: { ar: '', en: '' },
   rate: 'normal',
   textSize: 's',
   theme: 'system',
@@ -48,12 +45,6 @@ const STORAGE_KEY = 'prefs';
 const oneOf = <T extends string>(value: unknown, options: readonly T[], fallback: T): T =>
   options.includes(value as T) ? (value as T) : fallback;
 
-function sanitizeVoiceNames(raw: unknown): Prefs['voiceNames'] {
-  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const name = (value: unknown) => (typeof value === 'string' ? value.slice(0, 120) : '');
-  return { ar: name(r.ar), en: name(r.en) };
-}
-
 /** Accepts whatever was stored (possibly by an older version) and returns valid prefs. */
 export function sanitizePrefs(raw: unknown): Prefs {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -62,7 +53,6 @@ export function sanitizePrefs(raw: unknown): Prefs {
     mobility: oneOf(r.mobility, ['walk', 'wheelchair', 'stroller'], DEFAULT_PREFS.mobility),
     voice: typeof r.voice === 'boolean' ? r.voice : DEFAULT_PREFS.voice,
     voicePack: typeof r.voicePack === 'boolean' ? r.voicePack : DEFAULT_PREFS.voicePack,
-    voiceNames: sanitizeVoiceNames(r.voiceNames),
     rate: oneOf(r.rate, ['slow', 'normal', 'fast'], DEFAULT_PREFS.rate),
     textSize: oneOf(r.textSize, ['s', 'm', 'l'], DEFAULT_PREFS.textSize),
     theme: oneOf(r.theme, ['system', 'light', 'dark'], DEFAULT_PREFS.theme),

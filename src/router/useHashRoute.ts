@@ -6,16 +6,7 @@ import { useCallback, useEffect, useState } from 'react';
  * `#here-<placeId>` is a deep link printed on QR signs: it sets the visitor's
  * location and then opens the home page.
  */
-export const ROUTES = [
-  'home',
-  'places',
-  'map',
-  'route',
-  'lost',
-  'prefs',
-  'signs',
-  'studio',
-] as const;
+export const ROUTES = ['home', 'places', 'map', 'route', 'lost', 'prefs', 'signs'] as const;
 export type RouteName = (typeof ROUTES)[number];
 
 const isRoute = (value: string): value is RouteName =>

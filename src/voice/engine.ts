@@ -1,13 +1,11 @@
 import type { Locale } from '../domain/types';
-import { atomId, normalizeSpeech, segment } from './text';
-import { MemoryClipStore, createClipStore, type ClipStore, type StoredClip } from './store';
-import { readZip, writeZip } from './zip';
+import { atomId, segment } from './text';
 
 /**
- * The recorded voice pack: clips recorded on this device (the Voice Studio) plus
- * the pack shipped with the site (public/voice/<locale>/). A sentence is spoken
- * from clips only when every word of it is covered; otherwise the caller falls
- * back to the device's own voice.
+ * The voice pack shipped with the site (public/voice/<locale>/): short WAV clips
+ * made by scripts/generate-voice.ts. A sentence is spoken from clips only when
+ * every word of it is covered; otherwise the caller falls back to the device's
+ * own voice.
  */
 
 export interface ShippedManifest {
@@ -26,7 +24,6 @@ export interface AudioPort {
 }
 
 export interface EngineDeps {
-  readonly store: ClipStore;
   readonly audio: AudioPort;
   fetchBytes(url: string): Promise<Uint8Array>;
   fetchJson(url: string): Promise<unknown>;
@@ -41,14 +38,12 @@ interface Entry {
   readonly key: string;
   readonly text: string;
   readonly ms: number;
-  readonly origin: 'device' | 'shipped';
-  readonly wav?: Uint8Array;
   readonly file?: string;
   decoded?: Promise<unknown>;
 }
 
 export interface EngineSnapshot {
-  /** Changes whenever clips are added, removed or loaded. */
+  /** Changes whenever a pack is loaded. */
   readonly version: number;
   readonly speaking: boolean;
 }
@@ -90,7 +85,7 @@ export class VoiceEngine {
     return pack;
   }
 
-  /** Loads the shipped pack and this device's recordings. Safe to call again. */
+  /** Loads the shipped pack. Safe to call again. */
   load(locale: Locale): Promise<void> {
     let pending = this.loading.get(locale);
     if (!pending) {
@@ -113,26 +108,12 @@ export class VoiceEngine {
             key: clip.key,
             text: clip.text,
             ms: clip.ms,
-            origin: 'shipped',
             file: clip.file,
           });
         }
       }
     } catch {
-      // No shipped pack: that is normal until one is recorded.
-    }
-    try {
-      for (const clip of await this.deps.store.list(locale)) {
-        pack.set(clip.key, {
-          key: clip.key,
-          text: clip.text,
-          ms: clip.ms,
-          origin: 'device',
-          wav: clip.wav,
-        });
-      }
-    } catch {
-      // Storage unavailable: only the shipped pack.
+      // No pack shipped yet: the device voice does all the talking.
     }
     this.keyCache.delete(locale);
     this.loadedLocales.add(locale);
@@ -170,7 +151,7 @@ export class VoiceEngine {
 
   private async warmNow(locale: Locale, concurrency: number): Promise<number> {
     await this.load(locale);
-    const queue = [...this.pack(locale).values()].filter((entry) => entry.origin === 'shipped');
+    const queue = [...this.pack(locale).values()];
     let fetched = 0;
     let failed = false;
     const worker = async () => {
@@ -210,7 +191,7 @@ export class VoiceEngine {
     return this.pack(locale).size;
   }
 
-  /** True when recordings alone can say this sentence. */
+  /** True when the clips alone can say this sentence. */
   canSpeak(text: string, locale: Locale): boolean {
     if (this.size(locale) === 0) return false;
     const cover = segment(text, this.keys(locale));
@@ -219,11 +200,9 @@ export class VoiceEngine {
 
   private decode(entry: Entry, locale: Locale): Promise<unknown> {
     entry.decoded ??= (async () => {
-      const bytes =
-        entry.wav ??
-        (await this.deps.fetchBytes(
-          this.deps.packUrl(locale, entry.file ?? `${atomId(entry.key)}.wav`),
-        ));
+      const bytes = await this.deps.fetchBytes(
+        this.deps.packUrl(locale, entry.file ?? `${atomId(entry.key)}.wav`),
+      );
       return this.deps.audio.decode(bytes);
     })();
     // A failed decode is not cached, so a later attempt can try again.
@@ -233,7 +212,7 @@ export class VoiceEngine {
     return entry.decoded;
   }
 
-  /** Speaks the sentence from recordings. Resolves false if it could not (the caller should fall back). */
+  /** Speaks the sentence from clips. Resolves false if it could not (the caller should fall back). */
   async speak(text: string, locale: Locale, rate: PackRate = 'normal'): Promise<boolean> {
     const mine = ++this.ticket;
     this.stopPlayback();
@@ -272,96 +251,6 @@ export class VoiceEngine {
     this.ticket += 1;
     this.stopPlayback();
     if (this.snapshot.speaking) this.update({ speaking: false });
-  }
-
-  // --- Recording and sharing ---------------------------------------------
-
-  async save(locale: Locale, clip: StoredClip): Promise<void> {
-    await this.deps.store.put(locale, clip);
-    this.pack(locale).set(clip.key, {
-      key: clip.key,
-      text: clip.text,
-      ms: clip.ms,
-      origin: 'device',
-      wav: clip.wav,
-    });
-    this.keyCache.delete(locale);
-    this.update({}, true);
-  }
-
-  async remove(locale: Locale, key: string): Promise<void> {
-    await this.deps.store.remove(locale, key);
-    this.pack(locale).delete(key);
-    this.keyCache.delete(locale);
-    this.update({}, true);
-  }
-
-  /** Forgets this device's recordings (the shipped pack stays). */
-  async clearDevice(locale: Locale): Promise<void> {
-    await this.deps.store.clear(locale);
-    const pack = this.pack(locale);
-    for (const [key, entry] of pack) if (entry.origin === 'device') pack.delete(key);
-    this.loading.delete(locale);
-    this.keyCache.delete(locale);
-    await this.load(locale);
-  }
-
-  /** The audio of one clip, to play it back in the Studio. */
-  async preview(locale: Locale, key: string): Promise<void> {
-    const entry = this.pack(locale).get(key);
-    if (!entry) return;
-    this.cancel();
-    const mine = this.ticket;
-    const buffer = await this.decode(entry, locale);
-    if (mine !== this.ticket) return;
-    this.update({ speaking: true });
-    this.playing = await this.deps.audio.play([buffer], 1, () => {
-      if (this.ticket === mine) {
-        this.playing = null;
-        this.update({ speaking: false });
-      }
-    });
-  }
-
-  /** A zip with manifest.json and one WAV per clip: drop it into public/voice/<locale>/. */
-  async exportZip(locale: Locale): Promise<Uint8Array> {
-    const files: { name: string; data: Uint8Array }[] = [];
-    const clips: ShippedManifest['clips'][number][] = [];
-    for (const entry of this.pack(locale).values()) {
-      const file = `${atomId(entry.key)}.wav`;
-      const data =
-        entry.wav ?? (await this.deps.fetchBytes(this.deps.packUrl(locale, entry.file ?? file)));
-      files.push({ name: file, data });
-      clips.push({ key: entry.key, text: entry.text, file, ms: entry.ms });
-    }
-    const manifest: ShippedManifest = { version: 1, locale, clips };
-    files.unshift({
-      name: 'manifest.json',
-      data: new TextEncoder().encode(JSON.stringify(manifest, null, 1)),
-    });
-    return writeZip(files);
-  }
-
-  /** Adds the recordings in a zip made by exportZip. Returns how many clips it brought. */
-  async importZip(locale: Locale, bytes: Uint8Array): Promise<number> {
-    const files = await readZip(bytes);
-    const byName = new Map(files.map((file) => [file.name.replace(/^.*\//, ''), file.data]));
-    const manifestBytes = byName.get('manifest.json');
-    if (!manifestBytes) throw new Error('This zip has no manifest.json');
-    const manifest = JSON.parse(new TextDecoder().decode(manifestBytes)) as ShippedManifest;
-    if (manifest.version !== 1 || !Array.isArray(manifest.clips))
-      throw new Error('Unknown voice pack format');
-    if (manifest.locale && manifest.locale !== locale) {
-      throw new Error(`This pack is for ${manifest.locale}, not ${locale}`);
-    }
-    let added = 0;
-    for (const clip of manifest.clips) {
-      const wav = byName.get(clip.file.replace(/^.*\//, ''));
-      if (!wav || normalizeSpeech(clip.text) !== clip.key) continue;
-      await this.save(locale, { key: clip.key, text: clip.text, wav, ms: clip.ms });
-      added += 1;
-    }
-    return added;
   }
 }
 
@@ -436,7 +325,6 @@ export function createVoiceEngine(): VoiceEngine {
     }
   }
   return new VoiceEngine({
-    store: typeof window === 'undefined' ? new MemoryClipStore() : createClipStore(),
     audio,
     fetchBytes: async (url) => {
       const response = await fetch(url);
