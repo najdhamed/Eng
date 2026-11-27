@@ -143,7 +143,7 @@ export function HomePage({ navigate }: { navigate: (route: RouteName) => void })
                 <span className="quick__name">{tr.t(label)}</span>
                 {hit && (
                   <span className="quick__meta">
-                    {tr.duration(hit.metrics.seconds)}
+                    {tr.t('home.away', { time: tr.duration(hit.metrics.seconds) })}
                     {hit.place.floor !== journey.start.floor &&
                       ` · ${tr.floorShort(hit.place.floor)}`}
                   </span>

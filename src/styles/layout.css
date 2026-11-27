@@ -90,6 +90,13 @@ body::before {
   text-overflow: ellipsis;
 }
 
+/* Beside three buttons the tagline never fits on a phone, and half a sentence looks like a bug. */
+@media (max-width: 479px) {
+  .brand__tagline {
+    display: none;
+  }
+}
+
 /* On the narrowest phones the buttons need all the room; the logo says who we are. */
 @media (max-width: 340px) {
   .brand__text {

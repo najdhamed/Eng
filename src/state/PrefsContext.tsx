@@ -21,6 +21,8 @@ export interface Prefs {
   readonly voice: boolean;
   /** Use the studio voice shipped with the site when it can say the sentence. */
   readonly voicePack: boolean;
+  /** Read Arabic with its vowel marks, so the voice says each word the Saudi way. */
+  readonly marks: boolean;
   readonly rate: SpeechRate;
   readonly textSize: TextSize;
   readonly theme: Theme;
@@ -33,6 +35,7 @@ export const DEFAULT_PREFS: Prefs = {
   mobility: 'walk',
   voice: true,
   voicePack: true,
+  marks: true,
   rate: 'normal',
   textSize: 's',
   theme: 'system',
@@ -53,6 +56,7 @@ export function sanitizePrefs(raw: unknown): Prefs {
     mobility: oneOf(r.mobility, ['walk', 'wheelchair', 'stroller'], DEFAULT_PREFS.mobility),
     voice: typeof r.voice === 'boolean' ? r.voice : DEFAULT_PREFS.voice,
     voicePack: typeof r.voicePack === 'boolean' ? r.voicePack : DEFAULT_PREFS.voicePack,
+    marks: typeof r.marks === 'boolean' ? r.marks : DEFAULT_PREFS.marks,
     rate: oneOf(r.rate, ['slow', 'normal', 'fast'], DEFAULT_PREFS.rate),
     textSize: oneOf(r.textSize, ['s', 'm', 'l'], DEFAULT_PREFS.textSize),
     theme: oneOf(r.theme, ['system', 'light', 'dark'], DEFAULT_PREFS.theme),

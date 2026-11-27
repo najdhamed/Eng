@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { createSayer, type Recorded, type Synthetic } from './say';
 
-function setup(options: { covers?: boolean; plays?: boolean; loaded?: boolean } = {}) {
+function setup(
+  options: { covers?: boolean; plays?: boolean; loaded?: boolean; marks?: boolean } = {},
+) {
   let loaded = options.loaded ?? true;
   let finishLoading: () => void = () => undefined;
   const log: string[] = [];
@@ -30,7 +32,11 @@ function setup(options: { covers?: boolean; plays?: boolean; loaded?: boolean } 
     cancel: () => void log.push('synthetic.cancel'),
   };
   return {
-    sayer: createSayer(recorded, synthetic),
+    sayer: createSayer(
+      recorded,
+      synthetic,
+      options.marks ? (text) => `marked(${text})` : undefined,
+    ),
     log,
     finishLoading: () => finishLoading(),
     /** Settles the nth recorded sentence (0 = the first one spoken). */
@@ -116,5 +122,31 @@ describe('createSayer', () => {
     await flush();
     expect(log.some((entry) => entry.startsWith('recorded:'))).toBe(false);
     expect(log.some((entry) => entry.startsWith('synthetic:'))).toBe(false);
+  });
+
+  describe('vowel marks', () => {
+    it('gives the device voice the marked sentence and the recorded voice the plain one', async () => {
+      const covered = setup({ marks: true, covers: true, plays: true });
+      covered.sayer.say('مسافة', 'ar', 'normal');
+      await flush();
+      expect(covered.log).toEqual(['synthetic.cancel', 'recorded:مسافة']);
+
+      const uncovered = setup({ marks: true, covers: false });
+      uncovered.sayer.say('مسافة', 'ar', 'normal');
+      expect(uncovered.log.at(-1)).toBe('synthetic:marked(مسافة)');
+    });
+
+    it('marks the sentence for the device voice when a recording could not be played', async () => {
+      const { sayer, log } = setup({ marks: true, plays: false });
+      sayer.say('مسافة', 'ar', 'normal');
+      await flush();
+      expect(log.at(-1)).toBe('synthetic:marked(مسافة)');
+    });
+
+    it('speaks the sentence as written when the person turned the marks off', () => {
+      const { sayer, log } = setup({ marks: true, covers: false });
+      sayer.say('مسافة', 'ar', 'normal', true, false);
+      expect(log.at(-1)).toBe('synthetic:مسافة');
+    });
   });
 });

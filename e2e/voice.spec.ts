@@ -160,3 +160,66 @@ test.describe('the studio voice setting', () => {
     expect((await spied()).clips).toBe(unlocked);
   });
 });
+
+test.describe('how Arabic is read by the phone\u2019s own voice', () => {
+  /** Collects every sentence handed to the device voice. */
+  const spyOnSpeech = () => {
+    const heard: string[] = [];
+    (window as unknown as { __heard: string[] }).__heard = heard;
+    const speak = window.speechSynthesis?.speak.bind(window.speechSynthesis);
+    if (speak) {
+      window.speechSynthesis.speak = (utterance) => {
+        heard.push(utterance.text);
+        speak(utterance);
+      };
+    }
+  };
+  const heard = (page: import('@playwright/test').Page) =>
+    page.evaluate(() => (window as unknown as { __heard: string[] }).__heard);
+
+  test('has its vowel marks and its numbers written as words', async ({ page, context }) => {
+    await seed(context, { locale: 'ar', voice: true, journey: GROUND_ROUTE });
+    await page.addInitScript(spyOnSpeech);
+    await page.goto('/#route');
+    // The route opens with its summary and the first step in one breath.
+    await expect
+      .poll(async () => (await heard(page)).length, { timeout: 10_000 })
+      .toBeGreaterThan(0);
+
+    const sentence = (await heard(page))[0]!;
+    expect(sentence).toContain('يَلَّا نَمْشِي'); // «يلا نمشي»
+    expect(sentence).toContain('خُشّ'); // «خُش» is the Saudi «enter», not a formal verb
+    expect(sentence).not.toMatch(/[0-9]/);
+    expect(sentence).toMatch(/خُطُوَات/); // the steps in «الطريق ٤ خطوات»
+  });
+
+  test('is read as written when the vowel marks are switched off in Settings', async ({
+    page,
+    context,
+  }) => {
+    await seed(context, { locale: 'ar', voice: true, journey: GROUND_ROUTE });
+    await page.addInitScript(spyOnSpeech);
+    await page.goto('/#prefs');
+    const marks = page.getByRole('switch', { name: 'نطق بالحركات' });
+    await expect(marks).toBeChecked();
+    await marks.click();
+    await expect(marks).not.toBeChecked();
+
+    await page.goto('/#route');
+    await expect
+      .poll(async () => (await heard(page)).length, { timeout: 10_000 })
+      .toBeGreaterThan(0);
+    const sentence = (await heard(page))[0]!;
+    expect(sentence).toContain('يلا نمشي');
+    expect(sentence).not.toContain('يَلَّا');
+  });
+
+  test('has no such setting in English, where there is nothing to mark', async ({
+    page,
+    context,
+  }) => {
+    await seed(context, { locale: 'en' });
+    await page.goto('/#prefs');
+    await expect(page.getByRole('switch', { name: 'Say Arabic with vowel marks' })).toHaveCount(0);
+  });
+});

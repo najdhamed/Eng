@@ -30,9 +30,9 @@ export function useSpeech() {
   const speak = useCallback(
     (text: string, options: { force?: boolean } = {}) => {
       if (!prefs.voice && !options.force) return;
-      sayer.say(text, locale, prefs.rate, prefs.voicePack);
+      sayer.say(text, locale, prefs.rate, prefs.voicePack, prefs.marks);
     },
-    [prefs.voice, prefs.rate, prefs.voicePack, locale],
+    [prefs.voice, prefs.rate, prefs.voicePack, prefs.marks, locale],
   );
 
   const cancel = useCallback(() => sayer.stop(), []);

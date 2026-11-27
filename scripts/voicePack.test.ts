@@ -3,17 +3,20 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildCatalogue } from '../src/voice/catalogue';
+import { speechText } from '../src/voice/tashkeel';
 import { atomId } from '../src/voice/text';
 import { encodeWav } from '../src/voice/wav';
 import {
   DEFAULT_VOICE,
   assertConfig,
   buildSsml,
+  FatalVoiceError,
   estimate,
   generatePack,
   listenPage,
   synthesize,
   type AzureConfig,
+  type VoiceSource,
 } from './voicePack';
 
 const config: AzureConfig = {
@@ -216,7 +219,9 @@ describe('making the pack', () => {
   it('leaves out a phrase that failed, reports it, and keeps going', async () => {
     const atoms = buildCatalogue('ar').atoms.slice(0, 4);
     const bad = atoms[1]!;
-    const azure = fakeAzure((call) => (call.body.includes(bad.text) ? status(400) : ok()));
+    const azure = fakeAzure((call) =>
+      call.body.includes(speechText(bad.text, 'ar')) ? status(400) : ok(),
+    );
     const { report } = await run({ limit: 4 }, azure);
     expect(report.generated).toBe(3);
     expect(report.failed).toHaveLength(1);
@@ -245,6 +250,63 @@ describe('making the pack', () => {
     await writeFile(join(folder(), 'stale.wav'), 'x');
     await run({ limit: 3 });
     expect((await readdir(folder())).includes('stale.wav')).toBe(false);
+  });
+
+  it('reads each phrase with its vowel marks and its numbers as words, but files it by the plain phrase', async () => {
+    const heard: string[] = [];
+    const source: VoiceSource = {
+      name: 'test-voice',
+      speak: async (text) => {
+        heard.push(text);
+        return tone();
+      },
+    };
+    await generatePack({ locale: 'ar', publicDir: dir, source, concurrency: 1 });
+    const atoms = buildCatalogue('ar').atoms;
+    const plain = atoms.find((a) => a.text === '6 خطوات')!;
+    expect(heard).toContain('سِتّ خُطُوَات');
+    expect(heard).toContain('يَلَّا نَمْشِي');
+    expect(heard.some((text) => /[0-9]/.test(text))).toBe(false);
+    const manifest = JSON.parse(await readFile(join(folder(), 'manifest.json'), 'utf8'));
+    expect(manifest.clips.find((c: { key: string }) => c.key === plain.key).text).toBe('6 خطوات');
+  });
+
+  it('sends Azure the marked text too', async () => {
+    const { azure } = await run({ limit: 3 });
+    expect(azure.calls.some((call) => call.body.includes('يَلَّا نَمْشِي'))).toBe(true);
+  });
+
+  it('takes any voice source, names its clips by it, and never reuses another voice', async () => {
+    const make = (name: string): VoiceSource => ({ name, speak: async () => tone() });
+    await generatePack({ locale: 'ar', publicDir: dir, source: make('voice-a'), limit: 3 });
+    const manifest = () => readFile(join(folder(), 'manifest.json'), 'utf8').then(JSON.parse);
+    expect((await manifest()).voice).toBe('voice-a');
+    const other = await generatePack({
+      locale: 'ar',
+      publicDir: dir,
+      source: make('voice-b'),
+      limit: 3,
+    });
+    expect(other).toMatchObject({ generated: 3, reused: 0, voice: 'voice-b' });
+  });
+
+  it('stops at once on a fatal error from any voice, not only a refused Azure key', async () => {
+    let asked = 0;
+    const source: VoiceSource = {
+      name: 'broken',
+      speak: async () => {
+        asked += 1;
+        throw new FatalVoiceError('the model is missing');
+      },
+    };
+    await expect(
+      generatePack({ locale: 'ar', publicDir: dir, source, limit: 10, concurrency: 1 }),
+    ).rejects.toThrow('the model is missing');
+    expect(asked).toBe(1);
+  });
+
+  it('asks for a voice', async () => {
+    await expect(generatePack({ locale: 'ar', publicDir: dir })).rejects.toThrow(/Give a voice/);
   });
 
   it('works for English too, with its own default voice', async () => {

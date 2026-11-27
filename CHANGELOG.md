@@ -1,5 +1,33 @@
 # Changelog
 
+## 1.3.0 — 2026-11-27
+
+The voice now reads Arabic the way a Saudi says it, and every visitor can say whether the route was right.
+
+**New**
+
+- **Vowel marks (التشكيل) for the spoken Arabic.** The screen keeps its plain spelling, but the text handed to a voice carries a mark on every word (`لِفّ يَمِين`, `الدَّرَج عَلَى يَسَارَك`) in Saudi pronunciation, not the formal one: no case endings, and Saudi forms such as `خُشّ`, `قُدَّامَك`, `لِين`. Numbers are written out as words with the right gender (`سِتّ خُطُوَات`, `ثَلَاثَة أَمْتَار`), times as people say them (`سَبْعَة وَنُصّ`), and a lone letter by its name (جناح **ب**, the lift button **G**). A test fails and names any word the app can say that has no marks yet, and another proves the marks only add vowels (take them off and the sentence is back).
+- A **Read with vowel marks** switch in Settings (Arabic, on by default), in case a phone's voice reads marks badly.
+- **Route feedback.** When the visitor arrives, Darbak asks _«الطريق كان صح؟»_: one tap for yes; _no_ opens what went wrong (a step, the floor or lift, the door or sign, too long, the voice, other) and an optional note. A mistaken tap can be taken back. There is no server, so answers stay on the device with no name and no location; **Settings → Route feedback** shows the totals, copies them or downloads them as a CSV file (opens in Excel with Arabic intact, notes that look like formulas are neutralised) and deletes them.
+- **Open Arabic voices, for making the clips without a key.** `npm run voice:generate -- --engine piper --model <folder>` reads the phrases with a Piper or Kokoro voice running on the developer's own computer (through sherpa-onnx). `npm run voice:tashkeel -- <word>` drafts the marks for a new word with the published libtashkeel model.
+
+**Improved**
+
+- The "nearest to you" cards on Home say how far each place is; the floor lists on Home show a clear floor number. The tagline is hidden under 480 px so the header never wraps.
+
+**Measured**
+
+- Reading 30 real sentences with the open `ar_JO-kareem` voice and transcribing the result back with Whisper, the character error rate was **24%** without marks and **6–8%** with them (the lexicon, or the libtashkeel model). That is a proxy, not listening: the transcriber leans towards formal spelling, and it rewards the formal forms the lexicon deliberately avoids.
+
+**Not done**
+
+- No recorded pack is shipped from an open voice: the one tried is Jordanian formal Arabic, not Saudi, and the licence of its recordings could not be confirmed. The site still plays the Azure Saudi pack when `public/voice/ar/` has one, and the phone's voice otherwise.
+- How a given phone's built-in Arabic voice treats the marks has not been listened to on real devices.
+
+**Under the hood**
+
+- 277 unit tests and 95 Playwright tests (feedback, the new Settings switch, axe scans of every new state in Arabic, English, dark and high contrast).
+
 ## 1.2.0 — 2026-11-26
 
 A Saudi studio voice, made by Azure AI Speech and shipped with the site.

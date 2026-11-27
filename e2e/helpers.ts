@@ -17,10 +17,12 @@ export interface Seed {
   locale?: 'ar' | 'en';
   mobility?: 'walk' | 'wheelchair';
   voice?: boolean;
+  /** Read Arabic with vowel marks (the app's default is on). */
+  marks?: boolean;
   textSize?: 's' | 'm' | 'l';
   /** Skips the one-time "follow my location" explainer when false. */
   liveIntroSeen?: boolean;
-  journey?: { startId: string; destinationId: string; stepIndex?: number };
+  journey?: { startId: string; destinationId: string; stepIndex?: number; arrived?: boolean };
 }
 
 /** Puts the app in a known state before it first loads (no onboarding, voice off). */
@@ -30,13 +32,14 @@ export async function seed(context: BrowserContext, options: Seed = {}): Promise
     onboarded: true,
     mobility: options.mobility ?? 'walk',
     voice: options.voice ?? false,
+    ...(options.marks === undefined ? {} : { marks: options.marks }),
     textSize: options.textSize ?? 's',
   };
   const journey = options.journey && {
     startId: options.journey.startId,
     destinationId: options.journey.destinationId,
     stepIndex: options.journey.stepIndex ?? 0,
-    arrived: false,
+    arrived: options.journey.arrived ?? false,
     recents: [],
   };
   await context.addInitScript(

@@ -7,6 +7,8 @@ import { APP_VERSION } from '../config';
 import type { Locale, Mobility } from '../domain/types';
 import { useSpeech } from '../hooks/useSpeech';
 import { useI18n } from '../i18n/I18nContext';
+import { copyText, saveTextFile } from '../services/device';
+import { clearFeedback, feedbackCsv, readFeedback, totals } from '../services/feedback';
 import type { SpeechRate } from '../services/speech';
 import { useJourney } from '../state/JourneyContext';
 import { usePrefs, type TextSize, type Theme } from '../state/PrefsContext';
@@ -19,6 +21,8 @@ export function PrefsPage() {
   const toast = useToast();
   const speech = useSpeech();
   const [confirming, setConfirming] = useState(false);
+  const [answers, setAnswers] = useState(readFeedback);
+  const counts = totals(answers);
 
   return (
     <div className="page">
@@ -113,6 +117,14 @@ export function PrefsPage() {
           checked={prefs.voicePack}
           onChange={(voicePack) => set({ voicePack })}
         />
+        {tr.locale === 'ar' && (
+          <Switch
+            label={tr.t('prefs.marks')}
+            description={tr.t('prefs.marksSub')}
+            checked={prefs.marks}
+            onChange={(marks) => set({ marks })}
+          />
+        )}
         <div className="settings__row">
           <button
             type="button"
@@ -180,6 +192,59 @@ export function PrefsPage() {
           </span>
           <Icon name={tr.dir === 'rtl' ? 'chevronLeft' : 'chevronRight'} />
         </a>
+      </section>
+
+      <section className="settings card" aria-labelledby="s-feedback">
+        <h2 id="s-feedback" className="settings__title">
+          <Icon name="clipboard" size={20} /> {tr.t('prefs.feedback')}
+        </h2>
+        <p className="settings__note">{tr.t('prefs.feedbackSub')}</p>
+        <p className="settings__note" data-testid="feedback-totals">
+          {counts.total === 0
+            ? tr.t('prefs.feedbackNone')
+            : tr.t('prefs.feedbackTotals', {
+                total: counts.total,
+                right: counts.right,
+                wrong: counts.wrong,
+              })}
+        </p>
+        <div className="settings__row">
+          <button
+            type="button"
+            className="btn btn--soft"
+            disabled={counts.total === 0}
+            onClick={() => {
+              void copyText(feedbackCsv(answers)).then((ok) =>
+                toast.show(tr.t(ok ? 'toast.feedbackCopied' : 'toast.feedbackCopyFailed')),
+              );
+            }}
+          >
+            <Icon name="clipboard" />
+            {tr.t('prefs.feedbackCopy')}
+          </button>
+          <button
+            type="button"
+            className="btn btn--outline"
+            disabled={counts.total === 0}
+            onClick={() => saveTextFile('darbak-feedback.csv', feedbackCsv(answers))}
+          >
+            <Icon name="chevronDown" />
+            {tr.t('prefs.feedbackSave')}
+          </button>
+          <button
+            type="button"
+            className="btn btn--danger"
+            disabled={counts.total === 0}
+            onClick={() => {
+              clearFeedback();
+              setAnswers([]);
+              toast.show(tr.t('toast.feedbackCleared'));
+            }}
+          >
+            <Icon name="trash" />
+            {tr.t('prefs.feedbackClear')}
+          </button>
+        </div>
       </section>
 
       <section className="settings card" aria-labelledby="s-data">

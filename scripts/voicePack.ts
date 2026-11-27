@@ -2,16 +2,33 @@ import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import type { Locale } from '../src/domain/types';
 import { buildCatalogue, coverage, type Atom } from '../src/voice/catalogue';
+import { speechText } from '../src/voice/tashkeel';
 import { atomId } from '../src/voice/text';
 import { decodeWav, processRecording } from '../src/voice/wav';
 
 /**
  * Makes the voice the site ships: every phrase the app can say (the catalogue)
- * is read once by a neural voice from Azure AI Speech, cleaned up so the clips
- * stitch together, and written to public/voice/<locale>/ with a manifest. It
- * runs on a developer's machine or in a GitHub workflow, never in the browser,
- * so the key stays secret and visitors only download static files.
+ * is read once by a neural voice, cleaned up so the clips stitch together, and
+ * written to public/voice/<locale>/ with a manifest. The voice is either an open
+ * model that runs on the developer's own machine (Piper, through sherpa-onnx) or
+ * a neural voice from Azure AI Speech. It runs on a developer's machine or in a
+ * GitHub workflow, never in the browser, so a key stays secret and visitors only
+ * download static files.
+ *
+ * Each phrase is read with its vowel marks and numbers spelled out (see
+ * src/voice/tashkeel.ts); the clip is still filed under the plain phrase, so the
+ * app finds it the same way.
  */
+
+/** Whatever reads a phrase aloud: it gets marked text and returns a WAV file. */
+export interface VoiceSource {
+  /** Stored in the manifest, so a different voice never reuses another voice's clips. */
+  readonly name: string;
+  speak(text: string): Promise<Uint8Array>;
+}
+
+/** An error that would repeat for every phrase (a refused key, a missing model): the run stops. */
+export class FatalVoiceError extends Error {}
 
 export interface AzureConfig {
   readonly key: string;
@@ -103,7 +120,7 @@ export async function synthesize(
     }
     if (response.ok) return new Uint8Array(await response.arrayBuffer());
     if (response.status === 401 || response.status === 403) {
-      throw new Error(
+      throw new FatalVoiceError(
         `Azure refused the key (HTTP ${response.status}). Check AZURE_SPEECH_KEY and that AZURE_SPEECH_REGION is the region of that Speech resource.`,
       );
     }
@@ -116,10 +133,19 @@ export async function synthesize(
   }
 }
 
+/** Azure AI Speech as a voice source. */
+export function azureSource(config: AzureConfig, options?: SynthOptions): VoiceSource {
+  assertConfig(config);
+  return { name: config.voice, speak: (text) => synthesize(text, config, options) };
+}
+
 export interface GenerateOptions {
   readonly locale: Locale;
   readonly publicDir: string;
-  readonly config: AzureConfig;
+  /** Azure settings, used when no `source` is given. */
+  readonly config?: AzureConfig;
+  /** Any other voice (the Piper model on this machine, a fake in tests). */
+  readonly source?: VoiceSource;
   /** Only the first N phrases: a cheap listening test. */
   readonly limit?: number;
   /** Read every phrase again even if its clip is already there. */
@@ -135,7 +161,7 @@ export interface GenerateReport {
   readonly generated: number;
   readonly reused: number;
   readonly failed: readonly string[];
-  /** Characters of text sent to Azure (what the free allowance is counted in). */
+  /** Characters of text sent to the voice (what Azure's free allowance is counted in). */
   readonly characters: number;
   readonly bytes: number;
   readonly atomsDone: number;
@@ -170,13 +196,15 @@ export function estimate(locale: Locale, limit?: number) {
   const atoms = buildCatalogue(locale).atoms.slice(0, limit);
   return {
     clips: atoms.length,
-    characters: atoms.reduce((sum, atom) => sum + atom.text.length, 0),
+    characters: atoms.reduce((sum, atom) => sum + speechText(atom.text, locale).length, 0),
   };
 }
 
 export async function generatePack(options: GenerateOptions): Promise<GenerateReport> {
-  const { locale, publicDir, config, limit, force = false, log = () => undefined } = options;
-  assertConfig(config);
+  const { locale, publicDir, limit, force = false, log = () => undefined } = options;
+  if (!options.source && !options.config)
+    throw new Error('Give a voice: Azure settings or a source');
+  const source = options.source ?? azureSource(options.config!, options.synth);
   const catalogue = buildCatalogue(locale);
   const atoms: readonly Atom[] = limit ? catalogue.atoms.slice(0, limit) : catalogue.atoms;
   const folder = join(publicDir, 'voice', locale);
@@ -185,7 +213,7 @@ export async function generatePack(options: GenerateOptions): Promise<GenerateRe
   // Clips already made by this same voice are kept, so a failed run can simply be run again.
   const previous = force ? null : await readManifest(folder);
   const reusable = new Map<string, Clip>();
-  if (previous?.version === 1 && previous.voice === config.voice && previous.clips) {
+  if (previous?.version === 1 && previous.voice === source.name && previous.clips) {
     for (const clip of previous.clips) {
       if (!clip.key || !clip.text || !clip.file || typeof clip.ms !== 'number') continue;
       try {
@@ -207,8 +235,9 @@ export async function generatePack(options: GenerateOptions): Promise<GenerateRe
   const worker = async () => {
     for (let atom = queue.shift(); atom; atom = queue.shift()) {
       try {
-        const raw = await synthesize(atom.text, config, options.synth);
-        characters += atom.text.length;
+        const spoken = speechText(atom.text, locale);
+        const raw = await source.speak(spoken);
+        characters += spoken.length;
         const { samples, rate } = decodeWav(raw);
         const clip = processRecording(samples, rate);
         if (clip.silent) throw new Error('the audio is silent');
@@ -218,8 +247,8 @@ export async function generatePack(options: GenerateOptions): Promise<GenerateRe
         made.set(atom.key, { key: atom.key, text: atom.text, file, ms: clip.ms });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
-        // A refused key will fail every phrase the same way: stop at once.
-        if (message.startsWith('Azure refused')) throw error;
+        // A refused key or a missing model fails every phrase the same way: stop at once.
+        if (error instanceof FatalVoiceError) throw error;
         failed.push(`${atom.text}: ${message}`);
       }
       finished += 1;
@@ -228,7 +257,7 @@ export async function generatePack(options: GenerateOptions): Promise<GenerateRe
     }
   };
   const total = queue.length;
-  log(`Reading ${total} phrases with ${config.voice} (${atoms.length - total} already done)…`);
+  log(`Reading ${total} phrases with ${source.name} (${atoms.length - total} already done)…`);
   await Promise.all(Array.from({ length: Math.max(1, options.concurrency ?? 4) }, worker));
 
   const clips: Clip[] = [];
@@ -240,7 +269,7 @@ export async function generatePack(options: GenerateOptions): Promise<GenerateRe
 
   await writeFile(
     join(folder, 'manifest.json'),
-    `${JSON.stringify({ version: 1, locale, voice: config.voice, clips }, null, 1)}\n`,
+    `${JSON.stringify({ version: 1, locale, voice: source.name, clips }, null, 1)}\n`,
   );
   // Clips of an older run that the manifest no longer lists are removed.
   const keep = new Set(clips.map((clip) => clip.file));
@@ -251,7 +280,7 @@ export async function generatePack(options: GenerateOptions): Promise<GenerateRe
   const stats = coverage(catalogue, new Set(clips.map((clip) => clip.key)));
   return {
     locale,
-    voice: config.voice,
+    voice: source.name,
     generated: made.size,
     reused: reusable.size,
     failed,

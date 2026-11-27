@@ -6,6 +6,7 @@ import { LiveConsent } from '../components/LiveConsent';
 import { LivePanel } from '../components/LivePanel';
 import { MapViewport } from '../components/MapViewport';
 import { Pictogram, toneFor } from '../components/Pictogram';
+import { RouteFeedback } from '../components/RouteFeedback';
 import { doorPoint, placeCenter } from '../domain/geometry';
 import type { Amenity, FloorId, Point } from '../domain/types';
 import { useLiveTracking } from '../hooks/useLiveTracking';
@@ -65,6 +66,11 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
   }, [hasRoute]);
   const { tracker, live } = useLiveTracking(route);
   const liveOn = live?.status.active ?? false;
+  // Whether the live guidance walked this visitor along (it has stopped by the time they arrive).
+  const wasGuided = useRef(false);
+  useEffect(() => {
+    if (liveOn) wasGuided.current = true;
+  }, [liveOn]);
 
   const texts = useMemo(() => (route ? describeRoute(route, tr) : []), [route, tr]);
   const lastIndex = Math.max(0, (route?.steps.length ?? 1) - 1);
@@ -162,6 +168,18 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
     if (readJSON('liveIntro', false)) beginLive(false);
     else setConsent(true);
   };
+
+  const livePanel = live && (
+    <LivePanel
+      live={live}
+      onStart={onStartLive}
+      onStop={() => tracker?.stop()}
+      onFloorDone={() => {
+        buzz();
+        tracker?.confirmFloor();
+      }}
+    />
+  );
 
   const geometry = routeOnFloor(route, floor);
   const tracking = liveOn && live && !arrived;
@@ -326,6 +344,7 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
                   <Icon name="clock" size={14} /> {tr.name(route.destination.hours)}
                 </p>
               )}
+              <RouteFeedback route={route} guided={wasGuided.current} />
               <h3 className="section-title">{tr.t('route.nearbyHere')}</h3>
               <ul className="nearby">
                 {nearby.map(({ amenity, label, icon, hit }) =>
@@ -381,17 +400,7 @@ export function RoutePage({ navigate }: { navigate: (route: RouteName) => void }
             </section>
           ) : (
             <>
-              {live && (
-                <LivePanel
-                  live={live}
-                  onStart={onStartLive}
-                  onStop={() => tracker?.stop()}
-                  onFloorDone={() => {
-                    buzz();
-                    tracker?.confirmFloor();
-                  }}
-                />
-              )}
+              {livePanel}
               <section className="step-sign" aria-live="polite" aria-atomic="true">
                 <div className="step-sign__top">
                   <span className="step-sign__count">

@@ -74,6 +74,18 @@ Indoors, GPS drifts by tens of metres and the web has no barometer, so Darbak do
 
 The clips are made ahead of time by `scripts/voicePack.ts` (`npm run voice:generate`, or the **Generate Saudi voice** workflow): each catalogue phrase is sent once to Azure AI Speech (SSML, 16 kHz mono WAV), trimmed, faded and levelled (`wav.ts`) so the pieces join cleanly, and written to `public/voice/<locale>/` with a manifest. The key lives only in a repository secret or the developer's shell. The shipped pack is warmed into the service-worker cache in the background (unless Data Saver is on). A sentence spoken the instant a page opens waits (up to 1.5 s) for the manifest rather than falling back by mistake.
 
+### Vowel marks and numbers
+
+Arabic is written without short vowels and a voice guesses them (`لف` three ways, `أنت` masculine or feminine). `speechText` (`src/voice/tashkeel.ts`) is applied only to the text sent to the **device voice** and to clip generation; the recorded-clip lookup still uses the plain spelling, because `normalizeSpeech` strips marks. It looks every Arabic word up in a hand-written Saudi lexicon (`lexicon.ar.ts`: pausal forms, no case endings, Saudi forms), spells digits as words with gender agreement (3–10 take the opposite gender of the counted noun, so `سِتّ خُطُوَات` but `سِتَّة أَمْتَار`), says times and ranges as people do, reads a lone letter by its name, and leaves an unknown word as written. Tests enforce that the lexicon only ever adds vowels, that it covers every word the catalogue can produce, and that no digit reaches the voice. Settings can switch it off (`prefs.marks`) because a phone's own engine may read marks badly; that has not been listened to on real devices.
+
+`scripts/tashkeel-draft.mjs` drafts entries with the published libtashkeel model (neural, trained on formal Arabic, so every draft must be read and corrected). In a round trip through the open `ar_JO-kareem` voice and Whisper over 30 real sentences, character error was 24% without marks and 6–8% with either source of marks; the metric favours formal spelling, so it is evidence that marks matter, not a ranking of the two.
+
+Clips can come from a second source besides Azure: `scripts/piperSource.ts` drives `scripts/piper_voice.py` (sherpa-onnx, Piper or Kokoro models) over a line-delimited JSON pipe, one phrase at a time, so nothing leaves the machine and no key is needed. sherpa-onnx must be 1.x, because 2.x dropped the espeak phonemiser the Arabic Piper voices use.
+
+## Route feedback
+
+`RouteFeedback` (shown on the arrival screen) records one answer per walk: right or wrong, with reasons and a note when wrong. `src/services/feedback.ts` owns the data: entries carry the two place ids, verdict, reasons, note, walking mode, whether live guidance was used, language and version, and nothing that identifies a person. At most 200 are kept (the oldest drop off), anything read back is sanitised, an answer given in the last 30 minutes for the same route is shown as answered after a refresh, and a tap can be taken back. There is no backend, so the answers live in `localStorage`; Settings copies them or downloads a CSV (UTF-8 with a byte-order mark so Excel reads Arabic; cells that start with `= + - @` are prefixed with a quote so a spreadsheet cannot run them).
+
 ## Offline, install and security
 
 - **Service worker** (`public/sw.js`): the build (`vite.config.ts`) writes the exact list of built files into its precache and a content hash into the cache name, so the **first** visit already works offline and a new deploy replaces the old cache. Pages are network-first, build files cache-first, voice clips stale-while-revalidate. Covered by an offline test that goes offline right after the first load.

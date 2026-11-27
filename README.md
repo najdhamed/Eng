@@ -45,6 +45,8 @@ Large hospitals are hard to navigate: many floors, identical corridors and small
 | 📍  | **تابع موقعي**: يطلب إذنك، ويتابع مشيك بالخطوات والـGPS، وينتقل للخطوة التالية لحاله | **Follow my location**: asks permission, follows your walk by steps and GPS, advances the step by itself          |
 | 🗺️  | خريطة تفاعلية لكل دور: تكبير، سحب، ونقطة «أنت هنا» تتحرك مع كل خطوة                  | Interactive floor maps with pan, pinch-zoom and a moving "you are here" dot                                       |
 | 🎙️  | صوت سعودي واضح (Azure) يجي مع الموقع نفسه، بدل صوت الجوال                            | A clear Saudi studio voice (Azure neural), shipped with the site as static clips instead of the phone's own voice |
+| 🔡  | الجمل المنطوقة تنقرأ **بالحركات** بالنطق السعودي، والأرقام تنكتب كلمات               | Spoken Arabic is read **with vowel marks** in Saudi pronunciation, and numbers are spelled out as words           |
+| 💬  | بعد الوصول: «الطريق كان صح؟»، وتنحفظ الإجابة في الجهاز بس                            | After arriving: "Was the route right?" The answer stays on the device                                             |
 | 📷  | **ضعت؟** صوّر رمز QR على أي لوحة، ويكمل الطريق من مكانك                              | **Lost?** Scan the QR code on any sign and the route restarts from where you stand                                |
 | 🎙️  | بحث بالصوت وبحث ذكي يفهم «صيدليه» و«حمام» و«اسعاف»                                   | Voice search and fuzzy Arabic search ("صيدليه", "حمام", "اسعاف")                                                  |
 | 🚨  | زر طوارئ واحد، وأقرب دورة مياه ومصلى ومخرج من مكانك                                  | One-tap Emergency, and the nearest restroom, prayer room and exit                                                 |
@@ -105,7 +107,8 @@ npm run dev          # http://localhost:5173
 | `npm run test:e2e`       | Builds the app and drives it in a phone-sized Chromium (Playwright): location and motion permissions, the demo walk, the studio voice pack, offline, 320 px layouts, and axe WCAG scans in both languages. First time: `npx playwright install chromium` |
 | `npm run lint`           | ESLint, including accessibility rules (jsx-a11y)                                                                                                                                                                                                         |
 | `npm run check`          | Typecheck + lint + unit tests, the same gate CI runs                                                                                                                                                                                                     |
-| `npm run voice:generate` | Reads every phrase with an Azure Saudi neural voice into `public/voice/` (see below)                                                                                                                                                                     |
+| `npm run voice:generate` | Reads every phrase with an Azure Saudi neural voice (or an open one on your computer) into `public/voice/` (see below)                                                                                                                                   |
+| `npm run voice:tashkeel` | Drafts the vowel marks for a word that is missing from the lexicon                                                                                                                                                                                       |
 | `npm run icons`          | Re-renders the home-screen icons from `public/favicon.svg`                                                                                                                                                                                               |
 
 To try voice search, the live camera and **Follow my location** on a phone, open the dev server over HTTPS or deploy it (browsers only allow the microphone, camera and location on secure origins). Without a phone, the consent sheet has a **Try a demo walk** button that follows a simulated walker along the route.
@@ -122,6 +125,28 @@ The whole Arabic pack is 169 phrases and about 2,100 characters, well under 1% o
 4. Run it again with **trial** unticked. It opens a pull request that adds `public/voice/ar/`. Merging it ships the voice with the next deploy.
 
 The same thing from a terminal: `AZURE_SPEECH_KEY=… AZURE_SPEECH_REGION=… npm run voice:generate -- --voice ar-SA-ZariyahNeural` (`--dry-run` shows the cost, `--limit 12` makes a trial, `--force` reads everything again). An interrupted run picks up where it stopped.
+
+### Reading Arabic correctly (vowel marks)
+
+Arabic is written without its short vowels, so a voice has to guess them, and it guesses wrong: `لف` can be read three ways, `أنت` as masculine or feminine, `الدرج` as stairs or as a drawer. Before anything is read aloud, Darbak adds the marks itself (`src/voice/tashkeel.ts`, words in `src/voice/lexicon.ar.ts`) and spells the numbers out as words with the right gender. What is on screen does not change, and recorded clips are still found by the plain spelling.
+
+The marks follow how Saudis say the word, not how a newsreader would (`خُشّ`, `قُدَّامَك`, `لِين`, no case endings). A test lists any word of the app that has no marks yet, and another checks that only vowels were added. For a new word, `npm run voice:tashkeel -- كلمة` drafts the marks with the published libtashkeel model, which you then read and correct, since it was trained on formal Arabic. Settings has a **Read with vowel marks** switch in case a phone's own voice reads them badly.
+
+### Open voices instead of Azure (optional)
+
+The clips can also be made without any key, with an open Arabic voice on your own computer:
+
+```
+pip install "sherpa-onnx<2" numpy
+# download vits-piper-ar_JO-kareem-medium from https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models
+npm run voice:generate -- --engine piper --model path/to/vits-piper-ar_JO-kareem-medium --listen listen
+```
+
+Know what you are choosing: the open Arabic voices are formal Arabic in a Jordanian or Egyptian accent, not Saudi, and their licences differ (some are non-commercial, and the recordings behind `kareem` could not be confirmed). Listen to `listen/index.html` and check the licence before shipping what it makes. The Azure voices stay the Saudi-accented option.
+
+### Route feedback
+
+When a visitor arrives, Darbak asks whether the route was right. _Yes_ is one tap; _no_ lists what went wrong and takes an optional note. There is no server: answers are kept in the browser with no name and no location (the two places, the verdict, the reasons, the note, the walking mode, whether live guidance was used, the language and the app version). **Settings → Route feedback** shows the totals and copies the answers or downloads them as a CSV file, so a pilot can collect them by hand; sending them to a hospital's own form or database is the natural next step.
 
 ### Brand
 
@@ -156,8 +181,8 @@ src/
 ├── navigation/    Graph, Dijkstra, directions, route planner (no React)
 ├── i18n/          Arabic + English messages, plurals, direction wording
 ├── search/        Arabic-normalising place search
-├── services/      Speech, speech recognition, QR, storage, location, motion sensor, live tracker
-├── voice/         Studio voice: phrase catalogue, WAV clean-up, clip player
+├── services/      Speech, speech recognition, QR, storage, location, motion sensor, live tracker, route feedback
+├── voice/         Studio voice: phrase catalogue, vowel marks, WAV clean-up, clip player
 ├── state/         Preferences, journey and toast contexts
 ├── hooks/         useSpeech, useVoiceSearch, useWakeLock
 ├── components/    Map, floor switcher, search field, dialogs, controls

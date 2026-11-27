@@ -25,23 +25,36 @@ export interface Synthetic {
  * newer sentence always replaces an older one, including a fallback that was
  * still waiting to start.
  */
-export function createSayer(recorded: Recorded, synthetic: Synthetic) {
+export function createSayer(
+  recorded: Recorded,
+  synthetic: Synthetic,
+  /** Turns a sentence into what the device voice should read (vowel marks, numbers as words). */
+  prepare: (text: string, locale: Locale) => string = (text) => text,
+) {
   let ticket = 0;
 
   return {
-    say(text: string, locale: Locale, rate: 'slow' | 'normal' | 'fast', useRecorded = true): void {
+    say(
+      text: string,
+      locale: Locale,
+      rate: 'slow' | 'normal' | 'fast',
+      useRecorded = true,
+      marks = true,
+    ): void {
       const mine = ++ticket;
       synthetic.cancel();
+      // The recorded clips are found by the plain text; only the device voice needs the marks.
+      const deviceText = marks ? prepare(text, locale) : text;
 
       const speakNow = () => {
         if (useRecorded && recorded.canSpeak(text, locale)) {
           void recorded.speak(text, locale, rate).then((played) => {
-            if (!played && mine === ticket) synthetic.speak(text, locale, rate);
+            if (!played && mine === ticket) synthetic.speak(deviceText, locale, rate);
           });
           return;
         }
         recorded.cancel();
-        synthetic.speak(text, locale, rate);
+        synthetic.speak(deviceText, locale, rate);
       };
 
       if (useRecorded && recorded.ready && recorded.loaded && !recorded.loaded(locale)) {
